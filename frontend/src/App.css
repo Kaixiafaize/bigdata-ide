@@ -1,0 +1,295 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #1e1e1e;
+  color: #e0e0e0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.app-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.app-header p {
+  margin: 5px 0 0 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.app-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  gap: 10px;
+  padding: 10px;
+}
+
+/* 侧边栏 */
+.engine-selector {
+  width: 160px;
+  background-color: #252526;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #3e3e42;
+}
+
+.engine-selector h3 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e0e0e0;
+}
+
+.engine-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.engine-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background-color: #3e3e42;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  color: #e0e0e0;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.engine-btn:hover {
+  background-color: #4e4e52;
+  border-color: #667eea;
+}
+
+.engine-btn.active {
+  background-color: #667eea;
+  border-color: #667eea;
+  color: white;
+}
+
+.engine-btn .icon {
+  font-size: 14px;
+}
+
+.engine-btn .label {
+  flex: 1;
+}
+
+.session-info {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid #3e3e42;
+}
+
+.session-info h4 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #999;
+}
+
+.session-id {
+  margin: 0;
+  padding: 6px;
+  background-color: #1e1e1e;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: #888;
+  border: 1px solid #3e3e42;
+}
+
+/* 主编辑区 */
+.editor-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 10px;
+  min-width: 0;
+}
+
+.editor-panel,
+.output-panel {
+  display: flex;
+  flex-direction: column;
+  background-color: #252526;
+  border-radius: 8px;
+  border: 1px solid #3e3e42;
+  overflow: hidden;
+}
+
+.editor-panel {
+  flex: 1;
+  min-height: 300px;
+}
+
+.output-panel {
+  flex: 0 0 300px;
+  overflow-y: auto;
+}
+
+.editor-panel h2,
+.output-panel h2 {
+  margin: 0;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  background-color: #1e1e1e;
+  border-bottom: 1px solid #3e3e42;
+}
+
+.editor-panel > div:not(h2),
+.output-panel > div:not(h2) {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Monaco编辑器容器 */
+.editor-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.editor-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: #2d2d30;
+  border-bottom: 1px solid #3e3e42;
+}
+
+/* 输出面板 */
+.output-section {
+  padding: 12px 16px;
+  border-bottom: 1px solid #3e3e42;
+}
+
+.output-section.error {
+  background-color: rgba(244, 67, 54, 0.1);
+  border-left: 3px solid #f44336;
+}
+
+.output-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.output-content {
+  margin: 0;
+  padding: 8px;
+  background-color: #1e1e1e;
+  border-radius: 4px;
+  border: 1px solid #3e3e42;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #00ff00;
+  overflow-x: auto;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.output-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #666;
+}
+
+.output-empty p {
+  margin: 5px 0;
+  font-size: 14px;
+}
+
+/* 按钮样式 */
+button {
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3e3e42;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4e4e52;
+}
+
+/* 响应式设计 */
+@media (max-width: 1024px) {
+  .app-container {
+    flex-direction: column;
+  }
+
+  .engine-selector {
+    width: 100%;
+    height: auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .engine-buttons {
+    grid-column: span 2;
+  }
+
+  .output-panel {
+    flex: 0 0 200px;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-header {
+    padding: 12px;
+  }
+
+  .app-header h1 {
+    font-size: 20px;
+  }
+
+  .app-container {
+    padding: 5px;
+    gap: 5px;
+  }
+
+  .engine-selector {
+    grid-template-columns: 1fr;
+  }
+}
