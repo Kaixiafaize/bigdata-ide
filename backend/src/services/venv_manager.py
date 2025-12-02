@@ -172,11 +172,17 @@ class VenvManager:
         
         env = os.environ.copy()
         venv_path = self.get_venv_path(venv_type)
-        
+
+        # 如果未找到虚拟环境路径，返回 None（调用方应处理）
+        if venv_path is None or not venv_path.exists():
+            print(f"⚠️  get_environment: 虚拟环境路径不存在: {venv_type} -> {venv_path}")
+            return None
+
         # 设置虚拟环境相关的环境变量
         env['VIRTUAL_ENV'] = str(venv_path)
         bin_path = venv_path / 'bin'
-        env['PATH'] = f"{bin_path}:{env.get('PATH', '')}"
+        # 使用字符串形式拼接 PATH，确保类型正确
+        env['PATH'] = f"{str(bin_path)}:{env.get('PATH', '')}"
         
         return env
     

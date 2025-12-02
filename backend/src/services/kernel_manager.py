@@ -209,26 +209,52 @@ class KernelManager:
             env = self.venv_manager.get_environment(venv_type)
             
             # 对于普通 Python，可以直接执行
-            # 对于 PySpark/PyFlink，则需要通过虚拟环境运行
+            # 对于 PySpark/PyFlink，则优先通过虚拟环境里的 worker 子进程执行以实现隔离
             if kernel.engine:
-                # 使用虚拟环境中的 Python 执行
                 python_exe = self.venv_manager.get_python_executable(venv_type)
                 if python_exe:
-                    # 通过子进程执行（这样可以完全隔离环境）
-                    result = subprocess.run(
-                        [python_exe, '-c', code],
-                        capture_output=True,
-                        text=True,
-                        env=env,
-                        timeout=30
-                    )
-                    return {
-                        'status': 'ok' if result.returncode == 0 else 'error',
-                        'output': result.stdout,
-                        'errors': result.stderr
-                    }
-            
-            # 普通 Python 直接在当前进程执行
+                    # 使用我们的 kernel_worker 脚本，通过 JSON-over-STDIO 与之交互
+                    worker_script = Path(__file__).parent / 'kernel_worker.py'
+                    try:
+                        input_msg = json.dumps({'id': str(uuid.uuid4()), 'code': code})
+                        proc = subprocess.run(
+                            [str(python_exe), str(worker_script)],
+                            input=input_msg,
+                            capture_output=True,
+                            text=True,
+                            env=env,
+                            timeout=60
+                        )
+
+                        # worker 返回 JSON
+                        if proc.stdout:
+                            try:
+                                resp = json.loads(proc.stdout)
+                                return {
+                                    'status': resp.get('status', 'ok'),
+                                    'output': resp.get('output', ''),
+                                    'errors': resp.get('errors', '')
+                                }
+                            except Exception:
+                                return {
+                                    'status': 'error',
+                                    'output': proc.stdout,
+                                    'errors': proc.stderr
+                                }
+                        else:
+                            return {
+                                'status': 'error',
+                                'output': '',
+                                'errors': proc.stderr
+                            }
+                    except subprocess.TimeoutExpired:
+                        return {
+                            'status': 'error',
+                            'output': '',
+                            'errors': 'Execution timeout (60s)'
+                        }
+
+            # 普通 Python 直接在当前进程执行（保留原有行为）
             compile(code, '<string>', 'exec')
             exec(code, {})
             result = output.getvalue()
