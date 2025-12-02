@@ -3,7 +3,24 @@ import axios from 'axios';
 import { EnhancedMonacoEditor } from './components/EnhancedMonacoEditor';
 import './App.css';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8888';
+// 自动检测 API 地址：优先使用 VITE_API_URL，其次使用相对路径 /api（Vite 会代理到后端）
+// 在 Codespace 或其他远端环境中，相对路径通过 Vite 代理转发到本地 localhost:8888
+const getAPIBaseURL = () => {
+  if (import.meta.env.VITE_API_URL) {
+    console.log('[App] Using VITE_API_URL:', import.meta.env.VITE_API_URL);
+    return import.meta.env.VITE_API_URL;
+  }
+  // 开发环境下使用相对路径，Vite 代理会转发到 http://localhost:8888
+  if (import.meta.env.DEV) {
+    console.log('[App] Using relative path /api (Vite will proxy to localhost:8888)');
+    return '/api';
+  }
+  // 生产环境下也使用相对路径（假设后端与前端部署在同一服务器）
+  return '/api';
+};
+
+const API_BASE_URL = getAPIBaseURL();
+console.log('[App] API_BASE_URL:', API_BASE_URL, 'DEV:', import.meta.env.DEV);
 
 function App() {
   const [engine, setEngine] = useState('python');
@@ -17,14 +34,23 @@ function App() {
   const createSession = useCallback(async (selectedEngine) => {
     try {
       const response = await axios.post(
-        `${API_BASE_URL}/api/sessions`,
+        `${API_BASE_URL}/sessions`,
         {},
         { params: { engine: selectedEngine } }
       );
       setSessionId(response.data.session_id);
       return response.data.session_id;
     } catch (error) {
-      console.error('Failed to create session:', error);
+      // 打印完整错误，包含 axios 的 response/request 以便调试
+      console.error('Failed to create session full error:', error);
+      if (error.response) {
+        console.error('createSession response data:', error.response.data);
+      } else if (error.request) {
+        console.error('createSession no response, request sent:', error.request);
+      }
+      // 将错误对象附到 window，方便在浏览器 Console 中检查
+      try { window.__LAST_CREATE_SESSION_ERROR__ = error; } catch (e) {}
+
       setErrors(`Failed to create session: ${error.message}`);
       return null;
     }
@@ -45,7 +71,7 @@ function App() {
       const sid = sessionId || (await createSession(engine));
       
       const response = await axios.post(
-        `${API_BASE_URL}/api/execute`,
+        `${API_BASE_URL}/execute`,
         {
           engine: engine,
           code: codeToExecute,
@@ -62,8 +88,18 @@ function App() {
         setErrors(response.data.errors || 'Execution failed');
       }
     } catch (error) {
-      console.error('Execution error:', error);
-      setErrors(`Execution error: ${error.message}`);
+      // 打印完整错误信息，帮助定位网络/CORS/后端错误
+      console.error('Execution error full:', error);
+      if (error.response) {
+        console.error('Execution response data:', error.response.data);
+      } else if (error.request) {
+        console.error('Execution no response, request sent:', error.request);
+      }
+      try { window.__LAST_EXECUTION_ERROR__ = error; } catch (e) {}
+
+      // 为用户显示更友好的错误信息
+      const msg = error.response?.data?.message || error.message || 'Execution error';
+      setErrors(`Execution error: ${msg}`);
       setOutput('');
     } finally {
       setIsExecuting(false);

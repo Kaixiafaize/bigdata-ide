@@ -6,6 +6,17 @@ echo "🚀 BigData IDE - 多引擎代码执行平台"
 echo "=================================="
 echo ""
 
+# 清理旧进程和端口
+echo "🧹 清理旧进程..."
+pkill -f "node.*vite" 2>/dev/null || true
+pkill -f "python.*uvicorn" 2>/dev/null || true
+# 强制释放端口
+fuser -k 3000/tcp 2>/dev/null || true
+fuser -k 8888/tcp 2>/dev/null || true
+sleep 1
+echo "✅ 旧进程已清理"
+echo ""
+
 # 检查 Python
 if ! command -v python &> /dev/null; then
     echo "❌ 错误: 未找到 Python 3"
