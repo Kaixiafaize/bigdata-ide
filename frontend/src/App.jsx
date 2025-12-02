@@ -23,32 +23,62 @@ const API_BASE_URL = getAPIBaseURL();
 console.log('[App] API_BASE_URL:', API_BASE_URL, 'DEV:', import.meta.env.DEV);
 
 function App() {
-  const [engine, setEngine] = useState('python');
+  const [language, setLanguage] = useState('python');  // 'python' 或 'sql'
+  const [engine, setEngine] = useState(null);  // null, 'spark', 'flink'
   const [code, setCode] = useState('# 输入你的代码\nprint("Hello, BigData IDE!")');
   const [output, setOutput] = useState('');
   const [errors, setErrors] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
   const [sessionId, setSessionId] = useState(null);
 
+  // 根据语言获取可用的引擎
+  const getAvailableEngines = () => {
+    if (language === 'python' || language === 'sql') {
+      return [
+        { value: null, label: '无引擎 (普通)' },
+        { value: 'spark', label: 'Spark' },
+        { value: 'flink', label: 'Flink' }
+      ];
+    }
+    return [];
+  };
+
+  // 当语言改变时重置引擎
+  const handleLanguageChange = (e) => {
+    const newLang = e.target.value;
+    setLanguage(newLang);
+    setEngine(null);  // 重置引擎
+    
+    // 更新代码模板
+    if (newLang === 'python') {
+      setCode('# 输入你的 Python 代码\nprint("Hello, BigData IDE!")');
+    } else if (newLang === 'sql') {
+      setCode('-- 输入你的 SQL 代码\nSELECT 1 as test;');
+    }
+  };
+
   // 创建会话
-  const createSession = useCallback(async (selectedEngine) => {
+  const createSession = useCallback(async (selectedLanguage, selectedEngine) => {
     try {
+      const params = new URLSearchParams();
+      params.append('language', selectedLanguage);
+      if (selectedEngine) {
+        params.append('engine', selectedEngine);
+      }
+      
       const response = await axios.post(
-        `${API_BASE_URL}/sessions`,
-        {},
-        { params: { engine: selectedEngine } }
+        `${API_BASE_URL}/sessions?${params}`,
+        {}
       );
       setSessionId(response.data.session_id);
       return response.data.session_id;
     } catch (error) {
-      // 打印完整错误，包含 axios 的 response/request 以便调试
       console.error('Failed to create session full error:', error);
       if (error.response) {
         console.error('createSession response data:', error.response.data);
       } else if (error.request) {
         console.error('createSession no response, request sent:', error.request);
       }
-      // 将错误对象附到 window，方便在浏览器 Console 中检查
       try { window.__LAST_CREATE_SESSION_ERROR__ = error; } catch (e) {}
 
       setErrors(`Failed to create session: ${error.message}`);
@@ -68,11 +98,12 @@ function App() {
     setErrors('');
 
     try {
-      const sid = sessionId || (await createSession(engine));
+      const sid = sessionId || (await createSession(language, engine));
       
       const response = await axios.post(
         `${API_BASE_URL}/execute`,
         {
+          language: language,
           engine: engine,
           code: codeToExecute,
           session_id: sid
@@ -88,7 +119,6 @@ function App() {
         setErrors(response.data.errors || 'Execution failed');
       }
     } catch (error) {
-      // 打印完整错误信息，帮助定位网络/CORS/后端错误
       console.error('Execution error full:', error);
       if (error.response) {
         console.error('Execution response data:', error.response.data);
@@ -97,63 +127,99 @@ function App() {
       }
       try { window.__LAST_EXECUTION_ERROR__ = error; } catch (e) {}
 
-      // 为用户显示更友好的错误信息
       const msg = error.response?.data?.message || error.message || 'Execution error';
       setErrors(`Execution error: ${msg}`);
       setOutput('');
     } finally {
       setIsExecuting(false);
     }
-  }, [engine, sessionId, createSession]);
+  }, [language, engine, sessionId, createSession]);
 
-  // 切换引擎
-  const handleEngineChange = useCallback(async (newEngine) => {
-    setEngine(newEngine);
-    setCode('');
+  // 切换语言
+  const handleLanguageChangeWrapper = (lang) => {
+    setLanguage(lang);
+    setEngine(null);  // 重置引擎
+    setSessionId(null);
     setOutput('');
     setErrors('');
     
-    // 为新引擎创建会话
-    const newSessionId = await createSession(newEngine);
-    setSessionId(newSessionId);
-  }, [createSession]);
+    // 更新代码模板
+    if (lang === 'python') {
+      setCode('# 输入你的 Python 代码\nprint("Hello, BigData IDE!")');
+    } else if (lang === 'sql') {
+      setCode('-- 输入你的 SQL 代码\nSELECT 1 as test;');
+    }
+  };
+
+  // 切换引擎
+  const handleEngineChange = (newEngine) => {
+    setEngine(newEngine);
+    setOutput('');
+    setErrors('');
+    setSessionId(null);
+  };
 
   return (
     <div className="app">
       <header className="app-header">
         <h1>BigData IDE</h1>
-        <p>多引擎代码执行平台</p>
+        <p>多语言多引擎代码执行平台</p>
       </header>
 
       <div className="app-container">
-        {/* 侧边栏 - 引擎选择 */}
-        <aside className="engine-selector">
-          <h3>执行引擎</h3>
-          <div className="engine-buttons">
-            {['python', 'spark', 'flink', 'sql'].map((eng) => (
-              <button
-                key={eng}
-                className={`engine-btn ${engine === eng ? 'active' : ''}`}
-                onClick={() => handleEngineChange(eng)}
-              >
-                <span className="icon">⚙️</span>
-                <span className="label">{eng.toUpperCase()}</span>
-              </button>
-            ))}
-          </div>
+        {/* 侧边栏 - 语言和引擎选择 */}
+        <aside className="language-engine-selector">
+          {/* 语言选择 */}
+          <section className="selector-section">
+            <h3>编程语言</h3>
+            <div className="language-buttons">
+              {['python', 'sql'].map((lang) => (
+                <button
+                  key={lang}
+                  className={`lang-btn ${language === lang ? 'active' : ''}`}
+                  onClick={() => handleLanguageChangeWrapper(lang)}
+                >
+                  <span className="icon">
+                    {lang === 'python' ? '🐍' : '🗂️'}
+                  </span>
+                  <span className="label">{lang === 'python' ? 'Python' : 'SQL'}</span>
+                </button>
+              ))}
+            </div>
+          </section>
 
-          <div className="session-info">
-            <h4>会话</h4>
-            {sessionId ? (
-              <p className="session-id">
-                <small>{sessionId.substring(0, 8)}...</small>
-              </p>
-            ) : (
-              <p style={{ color: '#999', fontSize: '12px' }}>
-                执行代码时自动创建
-              </p>
-            )}
-          </div>
+          {/* 引擎选择 */}
+          <section className="selector-section">
+            <h3>执行引擎</h3>
+            <div className="engine-buttons">
+              {getAvailableEngines().map((opt) => (
+                <button
+                  key={opt.value || 'none'}
+                  className={`engine-btn ${engine === opt.value ? 'active' : ''}`}
+                  onClick={() => handleEngineChange(opt.value)}
+                >
+                  <span className="icon">
+                    {opt.value === 'spark' ? '⚡' : opt.value === 'flink' ? '🌊' : '⚙️'}
+                  </span>
+                  <span className="label">{opt.label}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* 会话信息 */}
+          <section className="selector-section">
+            <h3>当前会话</h3>
+            <div className="session-info">
+              <p><strong>语言:</strong> {language.toUpperCase()}</p>
+              <p><strong>引擎:</strong> {engine ? engine.toUpperCase() : '无'}</p>
+              {sessionId && (
+                <p style={{ fontSize: '12px', color: '#666', wordBreak: 'break-all' }}>
+                  <strong>ID:</strong> {sessionId.substring(0, 12)}...
+                </p>
+              )}
+            </div>
+          </section>
         </aside>
 
         {/* 主编辑区 */}
@@ -161,6 +227,7 @@ function App() {
           <div className="editor-panel">
             <h2>代码编辑器</h2>
             <EnhancedMonacoEditor
+              language={language}
               engine={engine}
               code={code}
               onCodeChange={setCode}

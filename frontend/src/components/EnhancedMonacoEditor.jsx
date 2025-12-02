@@ -1,19 +1,34 @@
 import React, { useRef } from 'react';
 import MonacoEditor from '@monaco-editor/react';
 
-const EngineIndicator = ({ engine }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-    <span style={{ fontSize: '12px', color: '#888' }}>Engine:</span>
-    <span style={{ 
-      padding: '4px 8px',
-      backgroundColor: '#007ACC',
-      color: '#fff',
-      borderRadius: '4px',
-      fontSize: '12px',
-      fontWeight: 'bold'
-    }}>
-      {engine.toUpperCase()}
-    </span>
+const LanguageEngineIndicator = ({ language, engine }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <span style={{ fontSize: '12px', color: '#888' }}>Language:</span>
+      <span style={{ 
+        padding: '4px 8px',
+        backgroundColor: '#007ACC',
+        color: '#fff',
+        borderRadius: '4px',
+        fontSize: '12px',
+        fontWeight: 'bold'
+      }}>
+        {language.toUpperCase()}
+      </span>
+    </div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <span style={{ fontSize: '12px', color: '#888' }}>Engine:</span>
+      <span style={{ 
+        padding: '4px 8px',
+        backgroundColor: engine ? '#28a745' : '#666',
+        color: '#fff',
+        borderRadius: '4px',
+        fontSize: '12px',
+        fontWeight: 'bold'
+      }}>
+        {engine ? engine.toUpperCase() : 'NONE'}
+      </span>
+    </div>
   </div>
 );
 
@@ -39,7 +54,8 @@ const ExecutionButtons = ({ onExecute, isExecuting }) => (
 );
 
 export const EnhancedMonacoEditor = ({ 
-  engine = 'python',
+  language = 'python',
+  engine = null,
   code = '',
   onCodeChange = () => {},
   onExecute = () => {},
@@ -47,15 +63,7 @@ export const EnhancedMonacoEditor = ({
 }) => {
   const editorRef = useRef(null);
 
-  const engineConfigs = {
-    spark: {
-      language: 'scala',
-      theme: 'vs-dark',
-    },
-    flink: {
-      language: 'java',
-      theme: 'vs-dark',
-    },
+  const languageConfigs = {
     python: {
       language: 'python',
       theme: 'vs-dark',
@@ -76,7 +84,7 @@ export const EnhancedMonacoEditor = ({
     );
   };
 
-  const config = engineConfigs[engine] || engineConfigs.python;
+  const config = languageConfigs[language] || languageConfigs.python;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -88,7 +96,7 @@ export const EnhancedMonacoEditor = ({
         backgroundColor: '#2d2d2d',
         borderBottom: '1px solid #444'
       }}>
-        <EngineIndicator engine={engine} />
+        <LanguageEngineIndicator language={language} engine={engine} />
         <ExecutionButtons 
           onExecute={() => onExecute(code)}
           isExecuting={isExecuting}

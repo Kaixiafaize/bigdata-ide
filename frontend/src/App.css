@@ -34,31 +34,43 @@
   padding: 10px;
 }
 
-/* 侧边栏 */
-.engine-selector {
-  width: 160px;
+/* 侧边栏 - 语言和引擎选择 */
+.language-engine-selector {
+  width: 180px;
   background-color: #252526;
   border-radius: 8px;
   padding: 16px;
   display: flex;
   flex-direction: column;
   border: 1px solid #3e3e42;
+  overflow-y: auto;
 }
 
-.engine-selector h3 {
-  margin: 0 0 12px 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #e0e0e0;
-}
-
-.engine-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.selector-section {
   margin-bottom: 20px;
 }
 
+.selector-section:last-child {
+  margin-bottom: 0;
+}
+
+.selector-section h3 {
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #e0e0e0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.language-buttons,
+.engine-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lang-btn,
 .engine-btn {
   display: flex;
   align-items: center;
@@ -74,47 +86,41 @@
   transition: all 0.2s ease;
 }
 
+.lang-btn:hover,
 .engine-btn:hover {
   background-color: #4e4e52;
   border-color: #667eea;
 }
 
+.lang-btn.active,
 .engine-btn.active {
   background-color: #667eea;
   border-color: #667eea;
   color: white;
 }
 
+.lang-btn .icon,
 .engine-btn .icon {
   font-size: 14px;
 }
 
+.lang-btn .label,
 .engine-btn .label {
   flex: 1;
 }
 
 .session-info {
-  margin-top: auto;
-  padding-top: 12px;
-  border-top: 1px solid #3e3e42;
-}
-
-.session-info h4 {
-  margin: 0 0 8px 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: #999;
-}
-
-.session-id {
-  margin: 0;
-  padding: 6px;
+  padding: 12px;
   background-color: #1e1e1e;
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
-  font-size: 11px;
-  color: #888;
+  border-radius: 6px;
   border: 1px solid #3e3e42;
+  font-size: 12px;
+}
+
+.session-info p {
+  margin: 6px 0;
+  display: flex;
+  justify-content: space-between;
 }
 
 /* 主编辑区 */

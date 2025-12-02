@@ -31,7 +31,8 @@ kernel_manager = KernelManager()
 from typing import Optional
 
 class ExecuteRequest(BaseModel):
-    engine: str  # python, spark, flink, sql
+    language: str = "python"  # python 或 sql
+    engine: Optional[str] = None  # None, spark, flink
     code: str
     session_id: Optional[str] = None
 
@@ -43,7 +44,8 @@ class ExecuteResponse(BaseModel):
 
 class SessionResponse(BaseModel):
     session_id: str
-    engine: str
+    language: str
+    engine: Optional[str]
     kernel_id: str
 
 # 活跃会话存储
@@ -64,22 +66,32 @@ async def health():
     return {"status": "ok"}
 
 @app.post("/api/sessions", response_model=SessionResponse)
-async def create_session(engine: str = "python"):
+async def create_session(language: str = "python", engine: Optional[str] = None):
     """
     创建新的执行会话
     
-    - **engine**: 执行引擎 (python, spark, flink, sql)
+    - **language**: 编程语言 (python 或 sql)
+    - **engine**: 执行引擎 (None, spark, flink)
     """
-    if engine not in ["python", "spark", "flink", "sql"]:
+    # 验证语言
+    if language not in ["python", "sql"]:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported engine: {engine}. Use python, spark, flink, or sql"
+            detail=f"Unsupported language: {language}. Use python or sql"
+        )
+    
+    # 验证引擎
+    if engine and engine not in [None, "spark", "flink"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported engine: {engine}. Use None, spark, or flink"
         )
     
     session_id = str(uuid.uuid4())
-    kernel_id = await kernel_manager.create_kernel(engine)
+    kernel_id = await kernel_manager.create_kernel(language, engine)
     
     sessions[session_id] = {
+        "language": language,
         "engine": engine,
         "kernel_id": kernel_id,
         "created_at": asyncio.get_event_loop().time()
@@ -87,6 +99,7 @@ async def create_session(engine: str = "python"):
     
     return SessionResponse(
         session_id=session_id,
+        language=language,
         engine=engine,
         kernel_id=kernel_id
     )
@@ -100,6 +113,7 @@ async def get_session(session_id: str):
     session_info = sessions[session_id]
     return {
         "session_id": session_id,
+        "language": session_info["language"],
         "engine": session_info["engine"],
         "kernel_id": session_info["kernel_id"],
         "status": "active"
@@ -110,7 +124,8 @@ async def execute_code(request: ExecuteRequest):
     """
     执行代码
     
-    - **engine**: 执行引擎 (python, spark, flink, sql)
+    - **language**: 编程语言 (python 或 sql)
+    - **engine**: 执行引擎 (None, spark, flink)
     - **code**: 要执行的代码
     - **session_id**: 可选，如果提供则使用已有会话
     """
@@ -121,10 +136,12 @@ async def execute_code(request: ExecuteRequest):
             raise HTTPException(status_code=404, detail="Session not found")
         session = sessions[request.session_id]
         kernel_id = session["kernel_id"]
+        language = session["language"]
         engine = session["engine"]
     else:
         # 创建新会话
-        kernel_id = await kernel_manager.create_kernel(request.engine)
+        kernel_id = await kernel_manager.create_kernel(request.language, request.engine)
+        language = request.language
         engine = request.engine
     
     try:
