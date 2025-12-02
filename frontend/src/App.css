@@ -7,6 +7,40 @@
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+.app-header .kernel-status {
+  margin-top: 8px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.9);
+}
+
+.status-bar {
+  height: 36px;
+  background: linear-gradient(90deg, #111214, #161619);
+  border-top: 1px solid #2f2f2f;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  font-size: 13px;
+  color: #cfcfcf;
+}
+
+.status-bar .left,
+.status-bar .right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.status-pill {
+  padding: 4px 8px;
+  background: #2b2b2b;
+  border-radius: 6px;
+  color: #e6e6e6;
+  font-size: 12px;
+}
+
+
 .app-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;

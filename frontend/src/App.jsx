@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { EnhancedMonacoEditor } from './components/EnhancedMonacoEditor';
 import './App.css';
@@ -30,6 +30,10 @@ function App() {
   const [errors, setErrors] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
   const [sessionId, setSessionId] = useState(null);
+  const [wsConnected, setWsConnected] = useState(false);
+  const [streamOutput, setStreamOutput] = useState('');
+  const [kernelStatus, setKernelStatus] = useState('idle');
+  const wsRef = useRef(null);
 
   // 根据语言获取可用的引擎
   const getAvailableEngines = () => {
@@ -57,6 +61,16 @@ function App() {
     }
   };
 
+  // 映射到本地 venv 标签（UI 显示用）
+  const getVenvLabel = (lang, eng) => {
+    if (lang === 'python') {
+      if (eng === 'spark') return 'venv_pyspark';
+      if (eng === 'flink') return 'venv_pyflink';
+      return 'venv_python';
+    }
+    return 'shared-sql';
+  };
+
   // 创建会话
   const createSession = useCallback(async (selectedLanguage, selectedEngine) => {
     try {
@@ -70,8 +84,60 @@ function App() {
         `${API_BASE_URL}/sessions?${params}`,
         {}
       );
-      setSessionId(response.data.session_id);
-      return response.data.session_id;
+      const sid = response.data.session_id;
+      setSessionId(sid);
+
+      // 打开 WebSocket 用于流式输出（由 Vite 代理转发到后端）
+      try {
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const wsUrl = `${protocol}://${window.location.host}/ws/sessions/${sid}`;
+        const ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+          setWsConnected(true);
+          setKernelStatus(`${selectedLanguage}/${selectedEngine || 'local'} (connected)`);
+        };
+
+        ws.onmessage = (evt) => {
+          try {
+            const msg = JSON.parse(evt.data);
+            // 如果是流式输出或增量输出，则追加
+            if (msg.output) {
+              setStreamOutput((s) => s + msg.output);
+            }
+            if (msg.errors) {
+              setErrors((e) => (e ? e + '\n' + msg.errors : msg.errors));
+            }
+            // 支持状态消息
+            if (msg.type === 'status') {
+              setKernelStatus(msg.value || kernelStatus);
+            }
+            // 如果是最终结果，以 REST 格式更新主要输出（兼容）
+            if (msg.status) {
+              setOutput(msg.output || '');
+            }
+          } catch (e) {
+            // 非 JSON 消息直接追加到流
+            setStreamOutput((s) => s + evt.data + '\n');
+          }
+        };
+
+        ws.onclose = () => {
+          setWsConnected(false);
+          setKernelStatus('disconnected');
+          wsRef.current = null;
+        };
+
+        ws.onerror = (err) => {
+          console.error('WebSocket error', err);
+        };
+
+      } catch (e) {
+        console.warn('Failed to open WebSocket for session', e);
+      }
+
+      return sid;
     } catch (error) {
       console.error('Failed to create session full error:', error);
       if (error.response) {
@@ -96,27 +162,35 @@ function App() {
     setIsExecuting(true);
     setOutput('');
     setErrors('');
+    setStreamOutput('');
 
     try {
       const sid = sessionId || (await createSession(language, engine));
-      
-      const response = await axios.post(
-        `${API_BASE_URL}/execute`,
-        {
-          language: language,
-          engine: engine,
-          code: codeToExecute,
-          session_id: sid
-        }
-      );
 
-      if (response.data.status === 'ok') {
-        setOutput(response.data.output || '(无输出)');
-        if (response.data.errors) {
-          setErrors(response.data.errors);
-        }
+      // 如果 WebSocket 已连接，优先使用流式执行
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ code: codeToExecute }));
+        // 不阻塞，流式消息会通过 ws.onmessage 更新输出
+        setOutput('(流式输出中...)');
       } else {
-        setErrors(response.data.errors || 'Execution failed');
+        const response = await axios.post(
+          `${API_BASE_URL}/execute`,
+          {
+            language: language,
+            engine: engine,
+            code: codeToExecute,
+            session_id: sid
+          }
+        );
+
+        if (response.data.status === 'ok') {
+          setOutput(response.data.output || '(无输出)');
+          if (response.data.errors) {
+            setErrors(response.data.errors);
+          }
+        } else {
+          setErrors(response.data.errors || 'Execution failed');
+        }
       }
     } catch (error) {
       console.error('Execution error full:', error);
@@ -164,6 +238,7 @@ function App() {
       <header className="app-header">
         <h1>BigData IDE</h1>
         <p>多语言多引擎代码执行平台</p>
+        <div className="kernel-status">状态: {kernelStatus} </div>
       </header>
 
       <div className="app-container">
@@ -256,6 +331,14 @@ function App() {
               </div>
             )}
 
+            {/* 流式输出（WebSocket） */}
+            {streamOutput && (
+              <div className="output-section">
+                <h4>📡 流式输出</h4>
+                <pre className="output-content">{streamOutput}</pre>
+              </div>
+            )}
+
             {/* 空状态 */}
             {!output && !errors && (
               <div className="output-empty">
@@ -274,6 +357,19 @@ function App() {
           </div>
         </main>
       </div>
+
+      <div className="status-bar">
+        <div className="left">
+          <div className="status-pill">Lang: {language.toUpperCase()}</div>
+          <div className="status-pill">Engine: {engine ? engine.toUpperCase() : 'NONE'}</div>
+          <div className="status-pill">VEnv: {getVenvLabel(language, engine)}</div>
+        </div>
+        <div className="right">
+          <div className="status-pill">{wsConnected ? 'WS: connected' : 'WS: disconnected'}</div>
+          {sessionId && <div className="status-pill">Session: {sessionId.substring(0,12)}...</div>}
+        </div>
+      </div>
+
     </div>
   );
 }

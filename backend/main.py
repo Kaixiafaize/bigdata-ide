@@ -181,8 +181,16 @@ async def delete_session(session_id: str):
     session = sessions.pop(session_id)
     kernel = kernel_manager.get_kernel(session["kernel_id"])
     
-    if kernel and kernel.process:
-        kernel.process.terminate()
+    if kernel:
+        # 尝试优雅停止（会取消心跳并终止子进程）
+        try:
+            await kernel.stop()
+        except Exception:
+            if getattr(kernel, 'process', None):
+                try:
+                    kernel.process.terminate()
+                except Exception:
+                    pass
     
     return {"status": "deleted", "session_id": session_id}
 
