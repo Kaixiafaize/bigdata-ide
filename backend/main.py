@@ -10,7 +10,7 @@ import os
 # 添加src目录到Python路径
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
-from services.kernel_manager import KernelManager, Kernel
+from src.services.kernel_manager import KernelManager, Kernel
 
 # 初始化FastAPI应用
 app = FastAPI(title="BigData IDE Kernel Gateway", version="0.1.0")
@@ -28,10 +28,12 @@ app.add_middleware(
 kernel_manager = KernelManager()
 
 # 数据模型
+from typing import Optional
+
 class ExecuteRequest(BaseModel):
     engine: str  # python, spark, flink, sql
     code: str
-    session_id: str = None
+    session_id: Optional[str] = None
 
 class ExecuteResponse(BaseModel):
     status: str  # ok, error
@@ -131,12 +133,20 @@ async def execute_code(request: ExecuteRequest):
         
         execution_id = str(uuid.uuid4())
         
-        return ExecuteResponse(
-            status=result.get('status', 'ok'),
-            output=result.get('output', ''),
-            errors=result.get('errors', ''),
-            execution_id=execution_id
-        )
+        if result is not None:
+            return ExecuteResponse(
+                status=result.get('status', 'ok'),
+                output=result.get('output', ''),
+                errors=result.get('errors', ''),
+                execution_id=execution_id
+            )
+        else:
+            return ExecuteResponse(
+                status="error",
+                output="",
+                errors="No result returned from kernel execution.",
+                execution_id=execution_id
+            )
     except Exception as e:
         return ExecuteResponse(
             status="error",
@@ -191,11 +201,18 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 
                 result = await kernel_manager.execute_code(kernel_id, code)
                 
-                await websocket.send_json({
-                    "status": result.get('status', 'ok'),
-                    "output": result.get('output', ''),
-                    "errors": result.get('errors', '')
-                })
+                if result is not None:
+                    await websocket.send_json({
+                        "status": result.get('status', 'ok'),
+                        "output": result.get('output', ''),
+                        "errors": result.get('errors', '')
+                    })
+                else:
+                    await websocket.send_json({
+                        "status": "error",
+                        "output": "",
+                        "errors": "No result returned from kernel execution."
+                    })
                 
             except json.JSONDecodeError:
                 await websocket.send_json({
