@@ -1,0 +1,14 @@
+"""Nbclassic read/write auth example."""
+
+from jupyter_server.auth import Authorizer
+
+
+class ReadWriteOnly(Authorizer):
+    """Authorizer class that makes Jupyter Server a read/write-only server."""
+
+    def is_authorized(self, handler, user, action, resource):
+        """Only allows `read` and `write` operations."""
+        return action in {"read", "write"}
+
+
+c.ServerApp.authorizer_class = ReadWriteOnly  # type:ignore[name-defined]

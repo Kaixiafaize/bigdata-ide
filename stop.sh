@@ -4,7 +4,8 @@
 
 set -euo pipefail
 
-echo "Stopping BigData IDE services..."
+echo "🛑 正在停止 BigData IDE 服务..."
+echo ""
 
 # 函数：优雅停止并在需要时强制终止
 terminate() {
@@ -30,7 +31,8 @@ terminate() {
 
 # 1) 尝试通过 pgrep/pkill 定位常见进程
 # 后端 (uvicorn)
-uvicorn_pids=$(pgrep -f "uvicorn main:app" || true)
+echo "🔍 查找后端进程..."
+uvicorn_pids=$(pgrep -f "uvicorn.*main:app" || true)
 if [ -n "$uvicorn_pids" ]; then
   for p in $uvicorn_pids; do
     terminate $p "uvicorn"
@@ -39,8 +41,8 @@ else
   echo "  未检测到 uvicorn 进程"
 fi
 
-# 也尝试 python -m uvicorn
-uvicorn_py_pids=$(pgrep -f "python.*-m uvicorn main:app" || true)
+# 也尝试 python/python3 -m uvicorn
+uvicorn_py_pids=$(pgrep -f "python.*-m uvicorn.*main:app" || true)
 if [ -n "$uvicorn_py_pids" ]; then
   for p in $uvicorn_py_pids; do
     terminate $p "python -m uvicorn"
@@ -48,16 +50,20 @@ if [ -n "$uvicorn_py_pids" ]; then
 fi
 
 # 前端 (vite / npm run dev)
+echo "🔍 查找前端进程..."
 vite_pids=$(pgrep -f "vite" || true)
 if [ -n "$vite_pids" ]; then
   for p in $vite_pids; do
-    terminate $p "vite"
+    # 检查是否是我们的 vite 进程（在 frontend 目录下）
+    if pgrep -a -f "vite" | grep -q "frontend\|bigdata-ide"; then
+      terminate $p "vite"
+    fi
   done
 else
   echo "  未检测到 vite 进程"
 fi
 
-npm_dev_pids=$(pgrep -f "npm run dev" || true)
+npm_dev_pids=$(pgrep -f "npm.*run.*dev" || true)
 if [ -n "$npm_dev_pids" ]; then
   for p in $npm_dev_pids; do
     terminate $p "npm run dev"
@@ -65,19 +71,22 @@ if [ -n "$npm_dev_pids" ]; then
 fi
 
 # 如果有使用 node 运行 dev server 的残留进程，也尝试匹配 frontend 目录下的 node 进程
-frontend_dir="$PWD/frontend"
-node_pids=$(pgrep -a node | awk '{print $1 " " substr($0, index($0,$2))}' | grep "$frontend_dir" | awk '{print $1}' || true)
-if [ -n "$node_pids" ]; then
-  for p in $node_pids; do
-    terminate $p "node (frontend)"
-  done
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+frontend_dir="$SCRIPT_DIR/frontend"
+if [ -d "$frontend_dir" ]; then
+  node_pids=$(pgrep -a node 2>/dev/null | grep "$frontend_dir" | awk '{print $1}' || true)
+  if [ -n "$node_pids" ]; then
+    for p in $node_pids; do
+      terminate $p "node (frontend)"
+    done
+  fi
 fi
 
 # 2) 强制关闭占用端口（可选）
-# 关闭 8888（后端）和 3000（前端）监听的进程
+echo "🔍 检查端口占用..."
 if command -v lsof >/dev/null 2>&1; then
   for port in 8888 3000; do
-    listeners=$(lsof -t -i :$port || true)
+    listeners=$(lsof -t -i :$port 2>/dev/null || true)
     if [ -n "$listeners" ]; then
       echo "  端口 $port 被进程占用: $listeners，尝试终止"
       for pid in $listeners; do
@@ -85,14 +94,29 @@ if command -v lsof >/dev/null 2>&1; then
       done
     fi
   done
+elif command -v fuser >/dev/null 2>&1; then
+  for port in 8888 3000; do
+    fuser -k $port/tcp 2>/dev/null || true
+  done
 fi
 
 # 3) 清理临时内核目录（如果存在）
+echo "🧹 清理临时文件..."
 if [ -d "/tmp/kernels" ]; then
   echo "  清理 /tmp/kernels 下的内核目录"
   rm -rf /tmp/kernels || true
 else
   echo "  /tmp/kernels 不存在，跳过"
+fi
+
+# 清理日志文件（可选）
+if [ -f "/tmp/bigdata-ide-backend.log" ]; then
+  echo "  清理后端日志文件"
+  rm -f /tmp/bigdata-ide-backend.log || true
+fi
+if [ -f "/tmp/bigdata-ide-frontend.log" ]; then
+  echo "  清理前端日志文件"
+  rm -f /tmp/bigdata-ide-frontend.log || true
 fi
 
 # 4) 清理可能的后台作业
@@ -103,5 +127,6 @@ if jobs -p >/dev/null 2>&1; then
   done
 fi
 
-echo "All done. BigData IDE services stopped."
+echo ""
+echo "✅ BigData IDE 服务已停止"
 exit 0

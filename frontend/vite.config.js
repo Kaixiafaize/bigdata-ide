@@ -14,7 +14,7 @@ export default defineConfig({
         changeOrigin: true,
         // 不重写路径，直接转发（Vite 会自动移除 /api 前缀并转发到 target）
       },
-      '/ws': {
+      '/api/bigdata-ide/ws': {
         target: 'ws://localhost:8888',
         changeOrigin: true,
         ws: true,
