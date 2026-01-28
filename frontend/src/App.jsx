@@ -4,6 +4,12 @@ import TabbedEditor from './components/TabbedEditor';
 import FileManager from './components/FileManager';
 import DatabaseConnectionManager from './components/DatabaseConnectionManager';
 import ExecutionHistory from './components/ExecutionHistory';
+import { Button } from './components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
+import { Badge } from './components/ui/badge';
+import { Separator } from './components/ui/separator';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './components/ui/tooltip';
+import { Sun, Moon, Code, Database as DatabaseIcon, FileEdit, Folder, History, ChevronUp, ChevronDown, CheckCircle, XCircle, Loader2, Sparkles } from 'lucide-react';
 
 // Jupyter Server API 基础 URL
 const getAPIBaseURL = () => {
@@ -27,6 +33,8 @@ function App() {
   const [wsConnected, setWsConnected] = useState(false);
   const [kernelStatus, setKernelStatus] = useState('idle');
   const [sessionInfoCollapsed, setSessionInfoCollapsed] = useState(false);
+  const [outputPanelCollapsed, setOutputPanelCollapsed] = useState(false);
+  const [theme, setTheme] = useState('dark'); // 'light' or 'dark'
   const wsRef = useRef(null);
   const messageQueueRef = useRef([]);
   const tabbedEditorRef = useRef(null);
@@ -280,19 +288,71 @@ function App() {
 
   const currentConfig = getCurrentKernelConfig();
 
+  // 主题切换
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    // 更新根元素的 class
+    const root = document.documentElement;
+    if (newTheme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    // 保存到 localStorage
+    localStorage.setItem('theme', newTheme);
+  };
+
+  // 初始化主题
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    setTheme(savedTheme);
+    const root = document.documentElement;
+    if (savedTheme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+  }, []);
+
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground dark">
-      {/* Header */}
-      <header className="border-b bg-card">
+    <TooltipProvider>
+      <div className={`flex flex-col h-screen bg-background text-foreground ${theme === 'dark' ? 'dark' : ''}`}>
+        {/* Header */}
+        <header className="border-b bg-card">
         <div className="flex items-center justify-between px-6 py-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-foreground">BigData IDE</h1>
-            <p className="text-sm text-muted-foreground mt-1">基于 FastAPI 和 Jupyter Client 的多 Kernel IDE</p>
+          <div className="flex items-center gap-3">
+            {/* Logo */}
+            <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-primary to-primary/60 shadow-lg">
+              <div className="relative">
+                <Code className="h-6 w-6 text-primary-foreground" />
+                <Sparkles className="h-3 w-3 text-primary-foreground absolute -top-1 -right-1" />
+              </div>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                  BigData IDE
+                </span>
+              </h1>
+            </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className="px-3 py-1.5 bg-muted rounded-md text-sm text-muted-foreground border">
-              状态: {kernelStatus}
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={toggleTheme}
+                  variant="ghost"
+                  size="sm"
+                >
+                  {theme === 'dark' ? <Sun className="h-4 w-4 mr-1" /> : <Moon className="h-4 w-4 mr-1" />}
+                  {theme === 'dark' ? '浅色' : '深色'}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{theme === 'dark' ? '切换到浅色主题' : '切换到深色主题'}</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
         
@@ -301,25 +361,28 @@ function App() {
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Kernel 类型:</span>
             {kernelTypes.map((kt) => (
-              <button
-                key={kt.id}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  selectedKernelType === kt.id
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
-                } ${!kt.available ? 'opacity-50 cursor-not-allowed' : ''}`}
-                onClick={() => handleKernelTypeChange(kt.id)}
-                disabled={!kt.available}
-                title={!kt.available ? `Kernel '${kt.kernel_spec}' 不可用` : ''}
-              >
-                <span className="text-base">
-                  {kt.language === 'python' ? '🐍' : '🗂️'}
-                </span>
-                <span>{kt.name}</span>
+              <Tooltip key={kt.id}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={selectedKernelType === kt.id ? "default" : "secondary"}
+                    size="sm"
+                    onClick={() => handleKernelTypeChange(kt.id)}
+                    disabled={!kt.available}
+                    className="flex items-center gap-2"
+                  >
+                    {kt.language === 'python' ? <Code className="h-4 w-4" /> : <DatabaseIcon className="h-4 w-4" />}
+                    <span>{kt.name}</span>
+                    {!kt.available && (
+                      <Badge variant="destructive" className="ml-1">不可用</Badge>
+                    )}
+                  </Button>
+                </TooltipTrigger>
                 {!kt.available && (
-                  <span className="px-1.5 py-0.5 bg-destructive text-destructive-foreground text-xs rounded">不可用</span>
+                  <TooltipContent>
+                    <p>Kernel '{kt.kernel_spec}' 不可用</p>
+                  </TooltipContent>
                 )}
-              </button>
+              </Tooltip>
             ))}
           </div>
         </div>
@@ -329,88 +392,80 @@ function App() {
         {/* 左侧菜单栏 - 标签页 */}
         <aside className="w-48 bg-card border-r flex flex-col">
           <div className="p-2 space-y-1">
-            <button
-              className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium transition-all ${
-                activeTab === 'editor'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
-              }`}
+            <Button
+              variant={activeTab === 'editor' ? "default" : "ghost"}
+              className="w-full justify-start gap-2"
               onClick={() => setActiveTab('editor')}
             >
-              <span className="text-base">📝</span>
-              <span className="text-left">代码编辑器</span>
-            </button>
-            <button
-              className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium transition-all ${
-                activeTab === 'files'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
-              }`}
+              <FileEdit className="h-4 w-4" />
+              <span>代码编辑器</span>
+            </Button>
+            <Button
+              variant={activeTab === 'files' ? "default" : "ghost"}
+              className="w-full justify-start gap-2"
               onClick={() => setActiveTab('files')}
             >
-              <span className="text-base">📁</span>
-              <span className="text-left">文件管理</span>
-            </button>
-            <button
-              className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium transition-all ${
-                activeTab === 'database'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
-              }`}
+              <Folder className="h-4 w-4" />
+              <span>文件管理</span>
+            </Button>
+            <Button
+              variant={activeTab === 'database' ? "default" : "ghost"}
+              className="w-full justify-start gap-2"
               onClick={() => setActiveTab('database')}
             >
-              <span className="text-base">🗄️</span>
-              <span className="text-left">数据库连接</span>
-            </button>
-            <button
-              className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium transition-all ${
-                activeTab === 'history'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
-              }`}
+              <DatabaseIcon className="h-4 w-4" />
+              <span>数据库连接</span>
+            </Button>
+            <Button
+              variant={activeTab === 'history' ? "default" : "ghost"}
+              className="w-full justify-start gap-2"
               onClick={() => setActiveTab('history')}
             >
-              <span className="text-base">📜</span>
-              <span className="text-left">执行历史</span>
-            </button>
+              <History className="h-4 w-4" />
+              <span>执行历史</span>
+            </Button>
           </div>
 
           {/* 会话信息 - 可收起 */}
           <div className="mt-auto border-t p-2">
-            <button
+            <Button
+              variant="ghost"
               onClick={() => setSessionInfoCollapsed(!sessionInfoCollapsed)}
-              className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:bg-accent rounded-md transition-colors"
+              className="w-full justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wider h-auto py-2"
             >
               <span>当前会话</span>
-              <span className="text-base">{sessionInfoCollapsed ? '▼' : '▲'}</span>
-            </button>
+              {sessionInfoCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+            </Button>
             {!sessionInfoCollapsed && (
-              <div className="mt-2 p-3 bg-muted rounded-md border text-xs space-y-2">
-                {currentConfig && (
-                  <>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Kernel:</span>
-                      <span className="text-foreground font-medium">{currentConfig.name}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">语言:</span>
-                      <span className="text-foreground font-medium">{currentConfig.language.toUpperCase()}</span>
-                    </div>
-                  </>
-                )}
-                {sessionId && (
-                  <div className="pt-2 border-t">
+              <Card className="mt-2">
+                <CardContent className="p-3 text-xs space-y-2">
+                  {currentConfig && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Kernel:</span>
+                        <span className="text-foreground font-medium">{currentConfig.name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">语言:</span>
+                        <span className="text-foreground font-medium">{currentConfig.language.toUpperCase()}</span>
+                      </div>
+                    </>
+                  )}
+                  {sessionId && (
+                    <>
+                      <Separator className="my-2" />
+                      <div className="text-muted-foreground break-all">
+                        <span className="font-medium">Session:</span> {sessionId.substring(0, 16)}...
+                      </div>
+                    </>
+                  )}
+                  {kernelId && (
                     <div className="text-muted-foreground break-all">
-                      <span className="font-medium">Session:</span> {sessionId.substring(0, 16)}...
+                      <span className="font-medium">Kernel:</span> {kernelId.substring(0, 16)}...
                     </div>
-                  </div>
-                )}
-                {kernelId && (
-                  <div className="text-muted-foreground break-all">
-                    <span className="font-medium">Kernel:</span> {kernelId.substring(0, 16)}...
-                  </div>
-                )}
-              </div>
+                  )}
+                </CardContent>
+              </Card>
             )}
           </div>
         </aside>
@@ -420,15 +475,17 @@ function App() {
 
           {/* 编辑器标签页 */}
           {activeTab === 'editor' && (
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex-1 flex flex-col bg-card border-b">
-                <div className="flex-1 min-h-0">
+            <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+              {/* 编辑器区域 */}
+              <div className="flex-1 min-h-0 flex flex-col bg-card border-b overflow-hidden">
+                <div className="flex-1 min-h-0 overflow-hidden">
                   <TabbedEditor
                     ref={tabbedEditorRef}
                     onExecute={handleExecute}
                     isExecuting={isExecuting}
                     kernelType={selectedKernelType}
                     language={currentConfig?.language || 'python'}
+                    theme={theme}
                     wsRef={wsRef}
                     messageQueueRef={messageQueueRef}
                     sessionId={sessionId}
@@ -442,23 +499,56 @@ function App() {
               </div>
 
               {/* 输出面板 */}
-              <div className="h-80 flex flex-col bg-card overflow-hidden">
-                <div className="px-4 py-2 bg-background border-b">
-                  <h2 className="text-sm font-semibold text-foreground">执行结果</h2>
-                </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <Card className={`${outputPanelCollapsed ? 'h-10' : 'h-80'} flex-shrink-0 flex flex-col border-t overflow-hidden transition-all duration-300`}>
+                <CardHeader 
+                  className="px-4 py-2 flex-shrink-0 cursor-pointer"
+                  onClick={() => setOutputPanelCollapsed(!outputPanelCollapsed)}
+                >
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm">执行结果</CardTitle>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOutputPanelCollapsed(!outputPanelCollapsed);
+                          }}
+                        >
+                          {outputPanelCollapsed ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{outputPanelCollapsed ? '展开输出面板' : '收起输出面板'}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </CardHeader>
+                {!outputPanelCollapsed && (
+                <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
                   {errors && (
-                    <div className="p-3 bg-destructive/10 border-l-4 border-destructive rounded">
-                      <h4 className="text-sm font-semibold text-destructive mb-2">❌ 错误</h4>
-                      <pre className="text-sm text-destructive/90 whitespace-pre-wrap font-mono">{errors}</pre>
-                    </div>
+                    <Card className="border-destructive bg-destructive/10">
+                      <CardContent className="p-3">
+                        <h4 className="text-sm font-semibold text-destructive mb-2 flex items-center gap-2">
+                          <XCircle className="h-4 w-4" />
+                          错误
+                        </h4>
+                        <pre className="text-sm text-destructive/90 whitespace-pre-wrap font-mono">{errors}</pre>
+                      </CardContent>
+                    </Card>
                   )}
 
                   {output && (
-                    <div className="p-3 bg-muted rounded border">
-                      <h4 className="text-sm font-semibold text-foreground mb-2">✅ 输出</h4>
-                      <pre className="text-sm text-green-600 dark:text-green-400 whitespace-pre-wrap font-mono">{output}</pre>
-                    </div>
+                    <Card>
+                      <CardContent className="p-3">
+                        <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                          输出
+                        </h4>
+                        <pre className="text-sm text-green-600 dark:text-green-400 whitespace-pre-wrap font-mono">{output}</pre>
+                      </CardContent>
+                    </Card>
                   )}
 
                   {!output && !errors && !isExecuting && (
@@ -470,12 +560,13 @@ function App() {
 
                   {isExecuting && (
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
-                      <span className="text-sm">⏳ 正在执行...</span>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm">正在执行...</span>
                     </div>
                   )}
-                </div>
-              </div>
+                </CardContent>
+                )}
+              </Card>
             </div>
           )}
 
@@ -516,25 +607,23 @@ function App() {
       </div>
 
       {/* 状态栏 */}
-      <div className="h-9 bg-card border-t flex items-center justify-between px-4 text-xs text-muted-foreground">
+      <div className="h-9 bg-card border-t flex items-center justify-between px-4 text-xs">
         <div className="flex items-center gap-4">
           {currentConfig && (
             <>
-              <div className="px-2 py-1 bg-muted rounded text-xs">Kernel: {currentConfig.name}</div>
-              <div className="px-2 py-1 bg-muted rounded text-xs">Lang: {currentConfig.language.toUpperCase()}</div>
+              <Badge variant="secondary">Kernel: {currentConfig.name}</Badge>
+              <Badge variant="secondary">Lang: {currentConfig.language.toUpperCase()}</Badge>
             </>
           )}
         </div>
         <div className="flex items-center gap-4">
-          <div className={`px-2 py-1 bg-muted rounded text-xs ${wsConnected ? 'text-green-600 dark:text-green-400' : 'text-destructive'}`}>
-            {wsConnected ? 'WS: 已连接' : 'WS: 未连接'}
-          </div>
           {sessionId && (
-            <div className="px-2 py-1 bg-muted rounded text-xs">Session: {sessionId.substring(0, 8)}...</div>
+            <Badge variant="secondary">Session: {sessionId.substring(0, 8)}...</Badge>
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }
 

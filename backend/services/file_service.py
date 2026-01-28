@@ -42,7 +42,9 @@ class FileService:
                 logger.info(f"Created MinIO bucket: {self.bucket}")
             logger.info(f"MinIO client initialized: {MINIO_ENDPOINT}/{self.bucket}")
         except Exception as e:
-            logger.error(f"Failed to initialize MinIO client: {e}")
+            logger.warning(f"MinIO client not available: {e}")
+            logger.warning("File management features will be disabled. Code execution will work normally.")
+            logger.warning(f"To enable file management, start MinIO at {MINIO_ENDPOINT}")
             self.client = None
     
     def is_available(self) -> bool:

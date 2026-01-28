@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
+import { ArrowUp, RefreshCw, FolderPlus, Upload, Trash2, Download, Lock, Eye, FileEdit, Info, Folder, File, Code, FileText, Image, Database as DatabaseIcon, FileJson, FileCode } from 'lucide-react';
+import { Button } from './ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
+import { Input } from './ui/input';
 
 const API_BASE_URL = '/api';
 
@@ -573,75 +578,150 @@ const FileManager = ({ onFileSelect, onFileOpen }) => {
       {/* 工具栏 */}
       <div className="flex justify-between items-center p-3 bg-background border-b border-border gap-2 flex-wrap">
         <div className="flex gap-2 items-center">
-          <button 
-            onClick={goUp} 
-            disabled={!currentPath} 
-            title="返回上级"
-            className="btn-icon"
-          >
-            ⬆️
-          </button>
-          <button 
-            onClick={() => loadFiles(currentPath)} 
-            title="刷新"
-            className="btn-icon"
-          >
-            🔄
-          </button>
-          <button 
-            onClick={() => setShowNewFolder(true)} 
-            title="新建文件夹"
-            className="btn-icon"
-          >
-            📁
-          </button>
-          <button 
-            onClick={() => fileInputRef.current?.click()} 
-            title="上传文件"
-            className="btn-icon"
-          >
-            📤
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={goUp}
+                disabled={!currentPath}
+              >
+                <ArrowUp className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>返回上级</p>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => loadFiles(currentPath)}
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>刷新</p>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setShowNewFolder(true)}
+              >
+                <FolderPlus className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>新建文件夹</p>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>上传文件</p>
+            </TooltipContent>
+          </Tooltip>
           {selectedFiles.size > 0 && (
             <>
-              <button onClick={handleBatchDelete} title="批量删除" className="btn-icon">🗑️</button>
-              <button onClick={handleBatchDownload} title="批量下载" className="btn-icon">⬇️</button>
-              <button onClick={handleBatchPermissions} title="批量权限" className="btn-icon">🔐</button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" onClick={handleBatchDelete}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>批量删除</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" onClick={handleBatchDownload}>
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>批量下载</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" onClick={handleBatchPermissions}>
+                    <Lock className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>批量权限</p>
+                </TooltipContent>
+              </Tooltip>
             </>
           )}
         </div>
         <div className="flex gap-2 items-center">
-          <select 
-            value={filterType} 
-            onChange={(e) => setFilterType(e.target.value)}
-            className="input-field w-auto text-sm"
-            title="文件类型过滤"
-          >
-            <option value="all">全部</option>
-            <option value="file">文件</option>
-            <option value="directory">目录</option>
-            <option value="image">图片</option>
-            <option value="code">代码</option>
-            <option value="text">文本</option>
-          </select>
-          <select 
-            value={sortBy} 
-            onChange={(e) => setSortBy(e.target.value)}
-            className="input-field w-auto text-sm"
-            title="排序方式"
-          >
-            <option value="name">名称</option>
-            <option value="size">大小</option>
-            <option value="modified">修改时间</option>
-            <option value="type">类型</option>
-          </select>
-          <button 
-            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-            title={`排序: ${sortOrder === 'asc' ? '升序' : '降序'}`}
-            className="btn-icon font-bold"
-          >
-            {sortOrder === 'asc' ? '↑' : '↓'}
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <select 
+                value={filterType} 
+                onChange={(e) => setFilterType(e.target.value)}
+                className="input-field w-auto text-sm"
+              >
+                <option value="all">全部</option>
+                <option value="file">文件</option>
+                <option value="directory">目录</option>
+                <option value="image">图片</option>
+                <option value="code">代码</option>
+                <option value="text">文本</option>
+              </select>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>文件类型过滤</p>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <select 
+                value={sortBy} 
+                onChange={(e) => setSortBy(e.target.value)}
+                className="input-field w-auto text-sm"
+              >
+                <option value="name">名称</option>
+                <option value="size">大小</option>
+                <option value="modified">修改时间</option>
+                <option value="type">类型</option>
+              </select>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>排序方式</p>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                className="font-bold"
+              >
+                {sortOrder === 'asc' ? '↑' : '↓'}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>排序: {sortOrder === 'asc' ? '升序' : '降序'}</p>
+            </TooltipContent>
+          </Tooltip>
           <input
             type="text"
             placeholder="搜索文件..."
@@ -680,12 +760,13 @@ const FileManager = ({ onFileSelect, onFileOpen }) => {
       {selectedFiles.size > 0 && (
         <div className="flex justify-between items-center px-3 py-2 bg-accent border-b border-border text-xs text-foreground">
           <span>已选择 {selectedFiles.size} 项</span>
-          <button 
+          <Button
+            variant="default"
+            size="sm"
             onClick={toggleSelectAll}
-            className="btn-primary text-xs px-3 py-1"
           >
             取消全选
-          </button>
+          </Button>
         </div>
       )}
 
@@ -739,8 +820,8 @@ const FileManager = ({ onFileSelect, onFileOpen }) => {
                   className="w-4 h-4 cursor-pointer"
                 />
               </div>
-              <div className="text-xl w-6 text-center">
-                {file.type === 'directory' ? '📁' : getFileIcon(file.name)}
+              <div className="w-6 text-center flex items-center justify-center">
+                {file.type === 'directory' ? <Folder className="h-5 w-5 text-blue-500" /> : getFileIcon(file.name)}
               </div>
               <div 
                 className="flex-1 cursor-pointer min-w-0" 
@@ -759,9 +840,16 @@ const FileManager = ({ onFileSelect, onFileOpen }) => {
                 <div className="text-sm text-foreground font-medium truncate flex items-center gap-2">
                   {file.name}
                   {file.permissions?.owner && (
-                    <span className="text-xs opacity-70" title={`所有者: ${file.permissions.owner}`}>
-                      👤
-                    </span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="text-xs opacity-70 flex items-center cursor-help">
+                          <Info className="h-3 w-3" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>所有者: {file.permissions.owner}</p>
+                      </TooltipContent>
+                    </Tooltip>
                   )}
                 </div>
                 {file.type === 'file' && file.size && (
@@ -777,19 +865,40 @@ const FileManager = ({ onFileSelect, onFileOpen }) => {
                 {file.permissions && (
                   <div className="flex gap-1 mt-1">
                     {hasReadPermission && (
-                      <span className="px-1.5 py-0.5 bg-background rounded text-xs text-primary font-bold" title="可读">
-                        R
-                      </span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="px-1.5 py-0.5 bg-background rounded text-xs text-primary font-bold cursor-help">
+                            R
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>可读</p>
+                        </TooltipContent>
+                      </Tooltip>
                     )}
                     {hasWritePermission && (
-                      <span className="px-1.5 py-0.5 bg-background rounded text-xs text-primary font-bold" title="可写">
-                        W
-                      </span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="px-1.5 py-0.5 bg-background rounded text-xs text-primary font-bold cursor-help">
+                            W
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>可写</p>
+                        </TooltipContent>
+                      </Tooltip>
                     )}
                     {hasDeletePermission && (
-                      <span className="px-1.5 py-0.5 bg-background rounded text-xs text-primary font-bold" title="可删">
-                        D
-                      </span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="px-1.5 py-0.5 bg-background rounded text-xs text-primary font-bold cursor-help">
+                            D
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>可删</p>
+                        </TooltipContent>
+                      </Tooltip>
                     )}
                   </div>
                 )}
@@ -797,54 +906,102 @@ const FileManager = ({ onFileSelect, onFileOpen }) => {
               <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 {file.type === 'file' && (
                   <>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handlePreview(file); }} 
-                      title="预览"
-                      disabled={!hasReadPermission}
-                      className="btn-icon text-xs"
-                    >
-                      👁️
-                    </button>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleOpenInEditor(file); }} 
-                      title="在编辑器中打开"
-                      disabled={!hasReadPermission}
-                      className="btn-icon text-xs"
-                    >
-                      📝
-                    </button>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleDownload(file.path, file.name); }} 
-                      title="下载"
-                      disabled={!hasReadPermission}
-                      className="btn-icon text-xs"
-                    >
-                      ⬇️
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => { e.stopPropagation(); handlePreview(file); }}
+                          disabled={!hasReadPermission}
+                          className="h-7 w-7"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>预览</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => { e.stopPropagation(); handleOpenInEditor(file); }}
+                          disabled={!hasReadPermission}
+                          className="h-7 w-7"
+                        >
+                          <FileEdit className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>在编辑器中打开</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => { e.stopPropagation(); handleDownload(file.path, file.name); }}
+                          disabled={!hasReadPermission}
+                          className="h-7 w-7"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>下载</p>
+                      </TooltipContent>
+                    </Tooltip>
                   </>
                 )}
-                <button 
-                  onClick={(e) => { e.stopPropagation(); handleShowDetails(file); }} 
-                  title="详细信息"
-                  className="btn-icon text-xs"
-                >
-                  ℹ️
-                </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); handleManagePermissions(file); }} 
-                  title="权限管理"
-                  className="btn-icon text-xs"
-                >
-                  🔐
-                </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); handleDelete(file); }} 
-                  title="删除"
-                  disabled={!hasDeletePermission}
-                  className="btn-icon text-xs"
-                >
-                  🗑️
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => { e.stopPropagation(); handleShowDetails(file); }}
+                      className="h-7 w-7"
+                    >
+                      <Info className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>详细信息</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => { e.stopPropagation(); handleManagePermissions(file); }}
+                      className="h-7 w-7"
+                    >
+                      <Lock className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>权限管理</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => { e.stopPropagation(); handleDelete(file); }}
+                      disabled={!hasDeletePermission}
+                      className="h-7 w-7 text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>删除</p>
+                  </TooltipContent>
+                </Tooltip>
               </div>
             </div>
           );
@@ -924,407 +1081,403 @@ const FileManager = ({ onFileSelect, onFileOpen }) => {
       )}
 
       {/* 上传对话框 */}
-      {showUpload && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3 className="text-lg font-semibold text-foreground mb-4">上传文件</h3>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={(e) => setUploadFile(e.target.files[0])}
-              style={{ display: 'none' }}
-            />
-            {uploadFile && (
-              <div className="space-y-2 mb-4">
-                <p className="text-sm text-foreground">已选择: {uploadFile.name}</p>
-                <p className="text-sm text-muted-foreground">大小: {formatFileSize(uploadFile.size)}</p>
-                {uploadProgress > 0 && (
-                  <div className="relative h-6 bg-background rounded overflow-hidden">
-                    <div 
-                      className="h-full bg-primary transition-all duration-300 flex items-center justify-center text-white text-xs"
-                      style={{ width: `${uploadProgress}%` }}
-                    >
-                      {uploadProgress}%
-                    </div>
+      <Dialog open={showUpload} onOpenChange={setShowUpload}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>上传文件</DialogTitle>
+          </DialogHeader>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={(e) => setUploadFile(e.target.files[0])}
+            style={{ display: 'none' }}
+          />
+          {uploadFile && (
+            <div className="space-y-2">
+              <p className="text-sm text-foreground">已选择: {uploadFile.name}</p>
+              <p className="text-sm text-muted-foreground">大小: {formatFileSize(uploadFile.size)}</p>
+              {uploadProgress > 0 && (
+                <div className="relative h-6 bg-background rounded overflow-hidden">
+                  <div 
+                    className="h-full bg-primary transition-all duration-300 flex items-center justify-center text-white text-xs"
+                    style={{ width: `${uploadProgress}%` }}
+                  >
+                    {uploadProgress}%
                   </div>
-                )}
-              </div>
-            )}
-            <div className="flex gap-2 justify-end">
-              <button 
-                onClick={handleUpload} 
-                disabled={!uploadFile || loading}
-                className="btn-primary"
-              >
-                上传
-              </button>
-              <button 
-                onClick={() => {
-                  setShowUpload(false);
-                  setUploadFile(null);
-                  setUploadProgress(0);
-                }}
-                className="btn-secondary"
-              >
-                取消
-              </button>
+                </div>
+              )}
             </div>
-          </div>
-        </div>
-      )}
+          )}
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowUpload(false);
+                setUploadFile(null);
+                setUploadProgress(0);
+              }}
+            >
+              取消
+            </Button>
+            <Button
+              variant="default"
+              onClick={handleUpload}
+              disabled={!uploadFile || loading}
+            >
+              上传
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 新建文件夹对话框 */}
-      {showNewFolder && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3 className="text-lg font-semibold text-foreground mb-4">新建文件夹</h3>
-            <input
-              type="text"
-              value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
-              placeholder="文件夹名称"
-              onKeyPress={(e) => e.key === 'Enter' && handleCreateFolder()}
-              className="input-field mb-4"
-            />
-            <div className="flex gap-2 justify-end">
-              <button 
-                onClick={handleCreateFolder} 
-                disabled={!newFolderName.trim() || loading}
-                className="btn-primary"
-              >
-                创建
-              </button>
-              <button 
-                onClick={() => {
-                  setShowNewFolder(false);
-                  setNewFolderName('');
-                }}
-                className="btn-secondary"
-              >
-                取消
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={showNewFolder} onOpenChange={setShowNewFolder}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>新建文件夹</DialogTitle>
+          </DialogHeader>
+          <Input
+            type="text"
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            placeholder="文件夹名称"
+            onKeyPress={(e) => e.key === 'Enter' && handleCreateFolder()}
+          />
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowNewFolder(false);
+                setNewFolderName('');
+              }}
+            >
+              取消
+            </Button>
+            <Button
+              variant="default"
+              onClick={handleCreateFolder}
+              disabled={!newFolderName.trim() || loading}
+            >
+              创建
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 重命名对话框 */}
-      {showRename && renameFile && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3 className="text-lg font-semibold text-foreground mb-4">重命名</h3>
-            <input
-              type="text"
-              value={newFileName}
-              onChange={(e) => setNewFileName(e.target.value)}
-              placeholder="新名称"
-              onKeyPress={(e) => e.key === 'Enter' && handleRename()}
-              className="input-field mb-4"
-            />
-            <div className="flex gap-2 justify-end">
-              <button 
-                onClick={handleRename} 
-                disabled={!newFileName.trim() || loading}
-                className="btn-primary"
-              >
-                确定
-              </button>
-              <button 
-                onClick={() => {
-                  setShowRename(false);
-                  setRenameFile(null);
-                  setNewFileName('');
-                }}
-                className="btn-secondary"
-              >
-                取消
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={showRename && !!renameFile} onOpenChange={(open) => {
+        if (!open) {
+          setShowRename(false);
+          setRenameFile(null);
+          setNewFileName('');
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>重命名</DialogTitle>
+          </DialogHeader>
+          <Input
+            type="text"
+            value={newFileName}
+            onChange={(e) => setNewFileName(e.target.value)}
+            placeholder="新名称"
+            onKeyPress={(e) => e.key === 'Enter' && handleRename()}
+          />
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowRename(false);
+                setRenameFile(null);
+                setNewFileName('');
+              }}
+            >
+              取消
+            </Button>
+            <Button
+              variant="default"
+              onClick={handleRename}
+              disabled={!newFileName.trim() || loading}
+            >
+              确定
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 移动对话框 */}
-      {showMove && moveFile && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3 className="text-lg font-semibold text-foreground mb-4">移动到</h3>
-            <p className="text-sm text-muted-foreground mb-2">文件: {moveFile.name}</p>
-            <input
-              type="text"
-              value={moveTargetPath}
-              onChange={(e) => setMoveTargetPath(e.target.value)}
-              placeholder="目标路径"
-              onKeyPress={(e) => e.key === 'Enter' && handleMove()}
-              className="input-field mb-4"
-            />
-            <div className="flex gap-2 justify-end">
-              <button 
-                onClick={handleMove} 
-                disabled={!moveTargetPath.trim() || loading}
-                className="btn-primary"
-              >
-                移动
-              </button>
-              <button 
-                onClick={() => {
-                  setShowMove(false);
-                  setMoveFile(null);
-                  setMoveTargetPath('');
-                }}
-                className="btn-secondary"
-              >
-                取消
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={showMove && !!moveFile} onOpenChange={(open) => {
+        if (!open) {
+          setShowMove(false);
+          setMoveFile(null);
+          setMoveTargetPath('');
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>移动到</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">文件: {moveFile?.name}</p>
+          <Input
+            type="text"
+            value={moveTargetPath}
+            onChange={(e) => setMoveTargetPath(e.target.value)}
+            placeholder="目标路径"
+            onKeyPress={(e) => e.key === 'Enter' && handleMove()}
+          />
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowMove(false);
+                setMoveFile(null);
+                setMoveTargetPath('');
+              }}
+            >
+              取消
+            </Button>
+            <Button
+              variant="default"
+              onClick={handleMove}
+              disabled={!moveTargetPath.trim() || loading}
+            >
+              移动
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 复制对话框 */}
-      {showCopy && copyFile && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3 className="text-lg font-semibold text-foreground mb-4">复制到</h3>
-            <p className="text-sm text-muted-foreground mb-2">文件: {copyFile.name}</p>
-            <input
-              type="text"
-              value={copyTargetPath}
-              onChange={(e) => setCopyTargetPath(e.target.value)}
-              placeholder="目标路径"
-              onKeyPress={(e) => e.key === 'Enter' && handleCopy()}
-              className="input-field mb-4"
-            />
-            <div className="flex gap-2 justify-end">
-              <button 
-                onClick={handleCopy} 
-                disabled={!copyTargetPath.trim() || loading}
-                className="btn-primary"
-              >
-                复制
-              </button>
-              <button 
-                onClick={() => {
-                  setShowCopy(false);
-                  setCopyFile(null);
-                  setCopyTargetPath('');
-                }}
-                className="btn-secondary"
-              >
-                取消
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={showCopy && !!copyFile} onOpenChange={(open) => {
+        if (!open) {
+          setShowCopy(false);
+          setCopyFile(null);
+          setCopyTargetPath('');
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>复制到</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">文件: {copyFile?.name}</p>
+          <Input
+            type="text"
+            value={copyTargetPath}
+            onChange={(e) => setCopyTargetPath(e.target.value)}
+            placeholder="目标路径"
+            onKeyPress={(e) => e.key === 'Enter' && handleCopy()}
+          />
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowCopy(false);
+                setCopyFile(null);
+                setCopyTargetPath('');
+              }}
+            >
+              取消
+            </Button>
+            <Button
+              variant="default"
+              onClick={handleCopy}
+              disabled={!copyTargetPath.trim() || loading}
+            >
+              复制
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 文件预览 */}
-      {showPreview && selectedFile && (
-        <div className="modal-overlay z-[1001]">
-          <div className="modal-content min-w-[600px] max-w-[90vw] max-h-[90vh] flex flex-col">
-            <div className="flex justify-between items-center mb-4 pb-3 border-b border-border">
-              <h3 className="text-lg font-semibold text-foreground">{selectedFile.name}</h3>
-              <button 
-                onClick={() => {
-                  setShowPreview(false);
-                  setPreviewContent(null);
-                  if (previewContent?.url) {
-                    URL.revokeObjectURL(previewContent.url);
-                  }
-                }}
-                className="w-6 h-6 flex items-center justify-center rounded hover:bg-accent text-foreground transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="flex-1 overflow-auto mb-4 bg-background rounded p-4">
-              {previewContent?.type === 'text' && (
-                <pre className="text-sm text-foreground font-mono whitespace-pre-wrap break-words m-0">
-                  {previewContent.content}
-                </pre>
-              )}
-              {previewContent?.type === 'image' && (
-                <img src={previewContent.url} alt={selectedFile.name} className="max-w-full h-auto rounded" />
-              )}
-              {previewContent?.type === 'binary' && (
-                <div className="text-center py-10 text-muted-foreground">
-                  {previewContent.message}
-                </div>
-              )}
-            </div>
-            <div className="flex gap-2 justify-end pt-3 border-t border-border">
-              <button 
-                onClick={() => handleOpenInEditor(selectedFile)}
-                className="btn-primary"
-              >
-                在编辑器中打开
-              </button>
-              <button 
-                onClick={() => handleDownload(selectedFile.path, selectedFile.name)}
-                className="btn-primary"
-              >
-                下载
-              </button>
-            </div>
+      <Dialog open={showPreview && !!selectedFile} onOpenChange={(open) => {
+        if (!open) {
+          setShowPreview(false);
+          setPreviewContent(null);
+          if (previewContent?.url) {
+            URL.revokeObjectURL(previewContent.url);
+          }
+        }
+      }}>
+        <DialogContent className="min-w-[600px] max-w-[90vw] max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{selectedFile?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto bg-background rounded p-4 min-h-[300px] max-h-[60vh]">
+            {previewContent?.type === 'text' && (
+              <pre className="text-sm text-foreground font-mono whitespace-pre-wrap break-words m-0">
+                {previewContent.content}
+              </pre>
+            )}
+            {previewContent?.type === 'image' && (
+              <img src={previewContent.url} alt={selectedFile?.name} className="max-w-full h-auto rounded" />
+            )}
+            {previewContent?.type === 'binary' && (
+              <div className="text-center py-10 text-muted-foreground">
+                {previewContent.message}
+              </div>
+            )}
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button
+              variant="default"
+              onClick={() => handleOpenInEditor(selectedFile)}
+            >
+              在编辑器中打开
+            </Button>
+            <Button
+              variant="default"
+              onClick={() => handleDownload(selectedFile?.path, selectedFile?.name)}
+            >
+              下载
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 文件详细信息 */}
-      {showDetails && detailsFile && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="flex justify-between items-center mb-4 pb-3 border-b border-border">
-              <h3 className="text-lg font-semibold text-foreground">文件详细信息</h3>
-              <button 
-                onClick={() => {
-                  setShowDetails(false);
-                  setDetailsFile(null);
-                }}
-                className="w-6 h-6 flex items-center justify-center rounded hover:bg-accent text-foreground transition-colors"
-              >
-                ✕
-              </button>
+      <Dialog open={showDetails && !!detailsFile} onOpenChange={(open) => {
+        if (!open) {
+          setShowDetails(false);
+          setDetailsFile(null);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>文件详细信息</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="text-sm text-foreground">
+              <strong className="text-primary mr-2">名称:</strong> {detailsFile?.name}
             </div>
-            <div className="space-y-3 mb-4">
+            <div className="text-sm text-foreground">
+              <strong className="text-primary mr-2">路径:</strong> {detailsFile?.path}
+            </div>
+            <div className="text-sm text-foreground">
+              <strong className="text-primary mr-2">类型:</strong> {detailsFile?.type === 'directory' ? '目录' : '文件'}
+            </div>
+            {detailsFile?.size && (
               <div className="text-sm text-foreground">
-                <strong className="text-primary mr-2">名称:</strong> {detailsFile.name}
+                <strong className="text-primary mr-2">大小:</strong> {formatFileSize(detailsFile.size)}
               </div>
+            )}
+            {detailsFile?.modified && (
               <div className="text-sm text-foreground">
-                <strong className="text-primary mr-2">路径:</strong> {detailsFile.path}
+                <strong className="text-primary mr-2">修改时间:</strong> {new Date(detailsFile.modified).toLocaleString('zh-CN')}
               </div>
-              <div className="text-sm text-foreground">
-                <strong className="text-primary mr-2">类型:</strong> {detailsFile.type === 'directory' ? '目录' : '文件'}
-              </div>
-              {detailsFile.size && (
+            )}
+            {detailsFile?.permissions && (
+              <>
                 <div className="text-sm text-foreground">
-                  <strong className="text-primary mr-2">大小:</strong> {formatFileSize(detailsFile.size)}
-                </div>
-              )}
-              {detailsFile.modified && (
-                <div className="text-sm text-foreground">
-                  <strong className="text-primary mr-2">修改时间:</strong> {new Date(detailsFile.modified).toLocaleString('zh-CN')}
-                </div>
-              )}
-              {detailsFile.permissions && (
-                <>
-                  <div className="text-sm text-foreground">
-                    <strong className="text-primary mr-2">权限:</strong>
-                    <div className="flex gap-2 mt-1">
-                      <span className="px-2 py-1 bg-background rounded text-xs">
-                        读取: {detailsFile.permissions.read ? '✓' : '✗'}
-                      </span>
-                      <span className="px-2 py-1 bg-background rounded text-xs">
-                        写入: {detailsFile.permissions.write ? '✓' : '✗'}
-                      </span>
-                      <span className="px-2 py-1 bg-background rounded text-xs">
-                        删除: {detailsFile.permissions.delete ? '✓' : '✗'}
-                      </span>
-                    </div>
+                  <strong className="text-primary mr-2">权限:</strong>
+                  <div className="flex gap-2 mt-1">
+                    <span className="px-2 py-1 bg-background rounded text-xs">
+                      读取: {detailsFile.permissions.read ? '✓' : '✗'}
+                    </span>
+                    <span className="px-2 py-1 bg-background rounded text-xs">
+                      写入: {detailsFile.permissions.write ? '✓' : '✗'}
+                    </span>
+                    <span className="px-2 py-1 bg-background rounded text-xs">
+                      删除: {detailsFile.permissions.delete ? '✓' : '✗'}
+                    </span>
                   </div>
-                  {detailsFile.permissions.owner && (
-                    <div className="text-sm text-foreground">
-                      <strong className="text-primary mr-2">所有者:</strong> {detailsFile.permissions.owner}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-            <div className="flex gap-2 justify-end pt-3 border-t border-border">
-              <button 
-                onClick={() => {
-                  setShowDetails(false);
-                  setDetailsFile(null);
-                }}
-                className="btn-secondary"
-              >
-                关闭
-              </button>
-            </div>
+                </div>
+                {detailsFile.permissions.owner && (
+                  <div className="text-sm text-foreground">
+                    <strong className="text-primary mr-2">所有者:</strong> {detailsFile.permissions.owner}
+                  </div>
+                )}
+              </>
+            )}
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowDetails(false);
+                setDetailsFile(null);
+              }}
+            >
+              关闭
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 权限管理对话框 */}
-      {(showPermissions || showBatchPermissions) && permissionFile && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="flex justify-between items-center mb-4 pb-3 border-b border-border">
-              <h3 className="text-lg font-semibold text-foreground">
-                {showBatchPermissions ? '批量权限管理' : '权限管理'} - {permissionFile.name || permissionFile.path}
-              </h3>
-              <button 
-                onClick={() => {
-                  setShowPermissions(false);
-                  setShowBatchPermissions(false);
-                  setPermissionFile(null);
-                }}
-                className="w-6 h-6 flex items-center justify-center rounded hover:bg-accent text-foreground transition-colors"
-              >
-                ✕
-              </button>
+      <Dialog open={(showPermissions || showBatchPermissions) && !!permissionFile} onOpenChange={(open) => {
+        if (!open) {
+          setShowPermissions(false);
+          setShowBatchPermissions(false);
+          setPermissionFile(null);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {showBatchPermissions ? '批量权限管理' : '权限管理'} - {permissionFile?.name || permissionFile?.path}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={permissions.read}
+                onChange={(e) => setPermissions({...permissions, read: e.target.checked})}
+                className="w-5 h-5 cursor-pointer"
+              />
+              <span className="text-sm text-foreground cursor-pointer">读取权限</span>
             </div>
-            <div className="space-y-4 mb-4">
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={permissions.read}
-                  onChange={(e) => setPermissions({...permissions, read: e.target.checked})}
-                  className="w-5 h-5 cursor-pointer"
-                />
-                <span className="text-sm text-foreground cursor-pointer">读取权限</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={permissions.write}
-                  onChange={(e) => setPermissions({...permissions, write: e.target.checked})}
-                  className="w-5 h-5 cursor-pointer"
-                />
-                <span className="text-sm text-foreground cursor-pointer">写入权限</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={permissions.delete}
-                  onChange={(e) => setPermissions({...permissions, delete: e.target.checked})}
-                  className="w-5 h-5 cursor-pointer"
-                />
-                <span className="text-sm text-foreground cursor-pointer">删除权限</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-foreground w-20">所有者:</span>
-                <input
-                  type="text"
-                  value={permissions.owner || ''}
-                  onChange={(e) => setPermissions({...permissions, owner: e.target.value})}
-                  placeholder="所有者名称（可选）"
-                  className="input-field flex-1"
-                />
-              </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={permissions.write}
+                onChange={(e) => setPermissions({...permissions, write: e.target.checked})}
+                className="w-5 h-5 cursor-pointer"
+              />
+              <span className="text-sm text-foreground cursor-pointer">写入权限</span>
             </div>
-            <div className="flex gap-2 justify-end pt-3 border-t border-border">
-              <button 
-                onClick={handleSavePermissions} 
-                disabled={loading}
-                className="btn-primary"
-              >
-                保存
-              </button>
-              <button 
-                onClick={() => {
-                  setShowPermissions(false);
-                  setShowBatchPermissions(false);
-                  setPermissionFile(null);
-                }}
-                className="btn-secondary"
-              >
-                取消
-              </button>
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={permissions.delete}
+                onChange={(e) => setPermissions({...permissions, delete: e.target.checked})}
+                className="w-5 h-5 cursor-pointer"
+              />
+              <span className="text-sm text-foreground cursor-pointer">删除权限</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-foreground w-20">所有者:</span>
+              <Input
+                type="text"
+                value={permissions.owner || ''}
+                onChange={(e) => setPermissions({...permissions, owner: e.target.value})}
+                placeholder="所有者名称（可选）"
+                className="flex-1"
+              />
             </div>
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowPermissions(false);
+                setShowBatchPermissions(false);
+                setPermissionFile(null);
+              }}
+            >
+              取消
+            </Button>
+            <Button
+              variant="default"
+              onClick={handleSavePermissions}
+              disabled={loading}
+            >
+              保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <input
         type="file"
@@ -1343,17 +1496,38 @@ const FileManager = ({ onFileSelect, onFileOpen }) => {
 
 // 获取文件图标
 const getFileIcon = (filename) => {
-  const ext = filename.split('.').pop()?.toLowerCase();
+  const ext = filename.split('.').pop()?.toLowerCase() || '';
   const iconMap = {
-    'py': '🐍', 'js': '📜', 'jsx': '⚛️', 'ts': '📘', 'tsx': '⚛️',
-    'java': '☕', 'cpp': '⚙️', 'c': '⚙️', 'h': '⚙️',
-    'sql': '🗂️', 'html': '🌐', 'css': '🎨', 'json': '📋',
-    'xml': '📄', 'yaml': '📝', 'yml': '📝',
-    'txt': '📄', 'md': '📝', 'log': '📋', 'csv': '📊',
-    'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️',
-    'pdf': '📕', 'zip': '📦', 'tar': '📦', 'gz': '📦'
+    'py': <Code className="h-5 w-5 text-blue-500" />,
+    'js': <FileCode className="h-5 w-5 text-yellow-500" />,
+    'jsx': <FileCode className="h-5 w-5 text-blue-400" />,
+    'ts': <FileCode className="h-5 w-5 text-blue-600" />,
+    'tsx': <FileCode className="h-5 w-5 text-blue-500" />,
+    'java': <FileCode className="h-5 w-5 text-orange-500" />,
+    'cpp': <FileCode className="h-5 w-5 text-blue-700" />,
+    'c': <FileCode className="h-5 w-5 text-blue-700" />,
+    'h': <FileCode className="h-5 w-5 text-blue-700" />,
+    'sql': <DatabaseIcon className="h-5 w-5 text-blue-600" />,
+    'html': <FileCode className="h-5 w-5 text-orange-500" />,
+    'css': <FileCode className="h-5 w-5 text-blue-500" />,
+    'json': <FileJson className="h-5 w-5 text-yellow-600" />,
+    'xml': <FileText className="h-5 w-5 text-orange-600" />,
+    'yaml': <FileText className="h-5 w-5 text-purple-500" />,
+    'yml': <FileText className="h-5 w-5 text-purple-500" />,
+    'txt': <FileText className="h-5 w-5 text-gray-500" />,
+    'md': <FileText className="h-5 w-5 text-gray-600" />,
+    'log': <FileText className="h-5 w-5 text-gray-500" />,
+    'csv': <FileText className="h-5 w-5 text-green-600" />,
+    'jpg': <Image className="h-5 w-5 text-purple-500" />,
+    'jpeg': <Image className="h-5 w-5 text-purple-500" />,
+    'png': <Image className="h-5 w-5 text-purple-500" />,
+    'gif': <Image className="h-5 w-5 text-purple-500" />,
+    'pdf': <FileText className="h-5 w-5 text-red-600" />,
+    'zip': <File className="h-5 w-5 text-blue-600" />,
+    'tar': <File className="h-5 w-5 text-blue-600" />,
+    'gz': <File className="h-5 w-5 text-blue-600" />
   };
-  return iconMap[ext] || '📄';
+  return iconMap[ext] || <File className="h-5 w-5 text-gray-500" />;
 };
 
 // 格式化文件大小

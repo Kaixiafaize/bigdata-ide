@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { RefreshCw, Play, Trash2, X, CheckCircle, XCircle, Circle } from 'lucide-react';
+import { Button } from './ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 const API_BASE_URL = '/api';
 
@@ -101,21 +104,36 @@ const ExecutionHistory = ({ onReExecute }) => {
       <div className="flex justify-between items-center px-4 py-3 border-b">
         <h3 className="text-lg font-semibold text-foreground">执行历史</h3>
         <div className="flex gap-2">
-          <button
-            onClick={loadHistory}
-            className="btn-secondary text-xs px-3 py-1"
-            title="刷新"
-          >
-            🔄
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={loadHistory}
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>刷新</p>
+            </TooltipContent>
+          </Tooltip>
           {history.length > 0 && (
-            <button
-              onClick={handleClearAll}
-              className="btn-ghost text-xs px-3 py-1 text-destructive"
-              title="清空所有"
-            >
-              清空
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearAll}
+                  className="text-destructive"
+                >
+                  清空
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>清空所有</p>
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>
@@ -123,7 +141,9 @@ const ExecutionHistory = ({ onReExecute }) => {
       {error && (
         <div className="px-4 py-2 bg-destructive/10 border-l-4 border-destructive text-destructive text-sm">
           {error}
-          <button onClick={() => setError('')} className="ml-2">✕</button>
+          <Button variant="ghost" size="icon" onClick={() => setError('')} className="ml-2 h-6 w-6">
+            <X className="h-3 w-3" />
+          </Button>
         </div>
       )}
 
@@ -162,14 +182,15 @@ const ExecutionHistory = ({ onReExecute }) => {
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded flex items-center gap-1 ${
                         item.status === 'success'
                           ? 'bg-green-600 text-white'
                           : item.status === 'error'
                           ? 'bg-destructive text-destructive-foreground'
                           : 'bg-muted text-muted-foreground'
                       }`}>
-                        {item.status === 'success' ? '✓' : item.status === 'error' ? '✗' : '○'} {item.status}
+                        {item.status === 'success' ? <CheckCircle className="h-3 w-3" /> : item.status === 'error' ? <XCircle className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
+                        {item.status}
                       </span>
                       <span className="text-xs text-muted-foreground">
                         {item.language.toUpperCase()}
@@ -190,24 +211,39 @@ const ExecutionHistory = ({ onReExecute }) => {
                   </div>
                   <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                     {onReExecute && (
-                      <button
-                        onClick={() => {
-                          setSelectedHistory(item);
-                          onReExecute(item.code);
-                        }}
-                        className="btn-primary text-xs px-2 py-1"
-                        title="重新执行"
-                      >
-                        ▶️
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedHistory(item);
+                              onReExecute(item.code);
+                            }}
+                          >
+                            <Play className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>重新执行</p>
+                        </TooltipContent>
+                      </Tooltip>
                     )}
-                    <button
-                      onClick={(e) => handleDelete(item.id, e)}
-                      className="btn-ghost text-xs px-2 py-1 text-destructive"
-                      title="删除"
-                    >
-                      🗑️
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => handleDelete(item.id, e)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>删除</p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                 </div>
               </div>

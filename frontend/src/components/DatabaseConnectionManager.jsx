@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { Button } from './ui/button';
+import { Plus, X } from 'lucide-react';
 
 const API_BASE_URL = '/api';
 
@@ -139,7 +142,9 @@ const DatabaseConnectionManager = ({ onConnectionSelect }) => {
     <div className="flex flex-col h-full bg-card rounded-lg border">
       <div className="flex justify-between items-center px-4 py-3 border-b">
         <h3 className="text-lg font-semibold text-foreground">数据库连接管理</h3>
-        <button
+        <Button
+          variant="default"
+          size="sm"
           onClick={() => {
             setShowForm(true);
             setEditingConn(null);
@@ -153,16 +158,18 @@ const DatabaseConnectionManager = ({ onConnectionSelect }) => {
               password: '',
             });
           }}
-          className="btn-primary text-xs"
         >
-          ➕ 新建连接
-        </button>
+          <Plus className="h-4 w-4 mr-1" />
+          新建连接
+        </Button>
       </div>
 
       {error && (
-        <div className="px-4 py-2 bg-destructive/10 border-l-4 border-destructive text-destructive text-sm">
-          {error}
-          <button onClick={() => setError('')} className="ml-2">✕</button>
+        <div className="px-4 py-2 bg-destructive/10 border-l-4 border-destructive text-destructive text-sm flex items-center justify-between">
+          <span>{error}</span>
+          <Button variant="ghost" size="icon" onClick={() => setError('')} className="h-6 w-6">
+            <X className="h-3 w-3" />
+          </Button>
         </div>
       )}
 
@@ -190,35 +197,64 @@ const DatabaseConnectionManager = ({ onConnectionSelect }) => {
                 </p>
               </div>
               <div className="flex gap-2">
-                <button
-                  onClick={() => handleUse(conn)}
-                  className="btn-primary text-xs px-3 py-1"
-                  title="使用此连接"
-                >
-                  使用
-                </button>
-                <button
-                  onClick={() => handleTest(conn.id)}
-                  disabled={testing}
-                  className="btn-secondary text-xs px-3 py-1"
-                  title="测试连接"
-                >
-                  {testing ? '测试中...' : '测试'}
-                </button>
-                <button
-                  onClick={() => handleEdit(conn)}
-                  className="btn-ghost text-xs px-3 py-1"
-                  title="编辑"
-                >
-                  编辑
-                </button>
-                <button
-                  onClick={() => handleDelete(conn.id)}
-                  className="btn-ghost text-xs px-3 py-1 text-destructive"
-                  title="删除"
-                >
-                  删除
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleUse(conn)}
+                    >
+                      使用
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>使用此连接</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleTest(conn.id)}
+                      disabled={testing}
+                    >
+                      {testing ? '测试中...' : '测试'}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>测试连接</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(conn)}
+                    >
+                      编辑
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>编辑</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(conn.id)}
+                      className="text-destructive"
+                    >
+                      删除
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>删除</p>
+                  </TooltipContent>
+                </Tooltip>
               </div>
             </div>
           </div>
@@ -314,22 +350,22 @@ const DatabaseConnectionManager = ({ onConnectionSelect }) => {
             </div>
 
             <div className="flex gap-2 justify-end pt-4 border-t">
-              <button
+              <Button
+                variant="secondary"
                 onClick={() => {
                   setShowForm(false);
                   setEditingConn(null);
                 }}
-                className="btn-secondary"
               >
                 取消
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="default"
                 onClick={handleSave}
                 disabled={loading}
-                className="btn-primary"
               >
                 {loading ? '保存中...' : '保存'}
-              </button>
+              </Button>
             </div>
           </div>
         )}

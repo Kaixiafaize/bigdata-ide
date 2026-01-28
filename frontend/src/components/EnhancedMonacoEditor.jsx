@@ -1,5 +1,9 @@
 import React, { useRef, useEffect } from 'react';
 import MonacoEditor from '@monaco-editor/react';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { Search, Sparkles, Save, Play, Loader2 } from 'lucide-react';
 
 export const EnhancedMonacoEditor = ({ 
   language = 'python',
@@ -8,9 +12,11 @@ export const EnhancedMonacoEditor = ({
   onCodeChange = () => {},
   onExecute = () => {},
   onSave = null,
+  onSaveAs = null,
   isExecuting = false,
   filePath = null,
-  isModified = false
+  isModified = false,
+  theme = 'vs-dark'
 }) => {
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
@@ -55,6 +61,22 @@ export const EnhancedMonacoEditor = ({
         editor.getAction('editor.action.formatDocument')?.run();
       }
     );
+
+    // 添加快捷键：Ctrl+F 搜索（使用内置搜索面板）
+    editor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyF,
+      () => {
+        editor.getAction('actions.find')?.run();
+      }
+    );
+
+    // 添加快捷键：Ctrl+H 搜索替换（使用内置搜索面板）
+    editor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyH,
+      () => {
+        editor.getAction('editor.action.startFindReplaceAction')?.run();
+      }
+    );
   };
 
   // 格式化代码
@@ -71,22 +93,18 @@ export const EnhancedMonacoEditor = ({
   const config = languageConfigs[language] || languageConfigs.python;
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-background relative">
       <div className="flex justify-between items-center px-4 py-2 bg-card border-b">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">Language:</span>
-            <span className="px-2 py-0.5 bg-primary text-primary-foreground rounded text-xs font-semibold">
-              {language.toUpperCase()}
-            </span>
+            <Badge>{language.toUpperCase()}</Badge>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">Kernel:</span>
-            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-              kernelType ? 'bg-green-600 text-white' : 'bg-muted text-muted-foreground'
-            }`}>
+            <Badge variant={kernelType ? "default" : "secondary"}>
               {kernelType ? kernelType.toUpperCase() : 'NONE'}
-            </span>
+            </Badge>
           </div>
           {filePath && (
             <div className="flex items-center gap-2">
@@ -99,34 +117,99 @@ export const EnhancedMonacoEditor = ({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleFormat}
-            className="btn-ghost text-xs px-3 py-1"
-            title="格式化代码 (Shift+Alt+F)"
-          >
-            🎨 格式化
-          </button>
-          {onSave && filePath && (
-            <button
-              onClick={() => onSave(filePath, code)}
-              className={`text-xs px-3 py-1 ${
-                isModified 
-                  ? 'btn-primary' 
-                  : 'btn-secondary opacity-60'
-              }`}
-              title="保存 (Ctrl+S)"
-            >
-              💾 {isModified ? '保存' : '已保存'}
-            </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  if (editorRef.current) {
+                    editorRef.current.getAction('editor.action.startFindReplaceAction')?.run();
+                  }
+                }}
+              >
+                <Search className="h-4 w-4 mr-1" />
+                搜索
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>搜索和替换 (Ctrl+F / Ctrl+H)</p>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleFormat}
+              >
+                <Sparkles className="h-4 w-4 mr-1" />
+                格式化
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>格式化代码 (Shift+Alt+F)</p>
+            </TooltipContent>
+          </Tooltip>
+          {onSaveAs && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => onSaveAs(code)}
+                >
+                  <Save className="h-4 w-4 mr-1" />
+                  保存文件
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>保存文件 (可自定义文件名)</p>
+              </TooltipContent>
+            </Tooltip>
           )}
-          <button
-            onClick={() => onExecute(code)}
-            disabled={isExecuting}
-            className="btn-primary text-xs px-3 py-1"
-            title="执行代码 (Ctrl+Enter)"
-          >
-            {isExecuting ? '⏳ 执行中...' : '▶️ 执行'}
-          </button>
+          {onSave && filePath && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={isModified ? "default" : "secondary"}
+                  size="sm"
+                  onClick={() => onSave(filePath, code)}
+                >
+                  <Save className="h-4 w-4 mr-1" />
+                  {isModified ? '保存' : '已保存'}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>保存 (Ctrl+S)</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => onExecute(code)}
+                disabled={isExecuting}
+              >
+                {isExecuting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    执行中...
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4 mr-1" />
+                    执行
+                  </>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>执行代码 (Ctrl+Enter)</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
       
@@ -136,7 +219,7 @@ export const EnhancedMonacoEditor = ({
           language={config.language}
           value={code}
           onChange={onCodeChange}
-          theme={config.theme}
+          theme={theme}
           onMount={handleEditorDidMount}
           options={{
             fontSize: 14,

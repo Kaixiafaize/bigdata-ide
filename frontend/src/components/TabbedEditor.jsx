@@ -1,6 +1,10 @@
 import React, { useState, useCallback, useEffect, useRef, useImperativeHandle, forwardRef, useMemo } from 'react';
 import axios from 'axios';
 import { EnhancedMonacoEditor } from './EnhancedMonacoEditor';
+import { Button } from './ui/button';
+import { Label } from './ui/label';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { X, Plus } from 'lucide-react';
 
 const API_BASE_URL = '/api';
 
@@ -9,6 +13,7 @@ const TabbedEditor = forwardRef(({
   isExecuting, 
   kernelType, 
   language,
+  theme = 'vs-dark',
   wsRef,
   messageQueueRef,
   sessionId,
@@ -64,7 +69,7 @@ const TabbedEditor = forwardRef(({
     if (!tab || !tab.path) {
       // 如果没有路径，提示用户先保存文件
       if (showMessage) {
-        alert('请先通过文件管理器保存文件，或使用"另存为"功能');
+        handleSaveAs(tabId);
       }
       return;
     }
@@ -90,6 +95,54 @@ const TabbedEditor = forwardRef(({
       }
     }
   }, [tabs]);
+
+  // 另存为（保存为新文件）
+  const handleSaveAs = useCallback(async (tabId = null) => {
+    const tab = tabId ? tabs.find(t => t.id === tabId) : activeTab;
+    if (!tab) return;
+
+    // 弹出对话框让用户输入文件名
+    const defaultName = tab.path ? tab.name : `untitled.${tab.language === 'sql' ? 'sql' : 'py'}`;
+    const fileName = prompt('请输入文件名（包含扩展名，如: example.py）:', defaultName);
+    
+    if (!fileName || !fileName.trim()) {
+      return; // 用户取消
+    }
+
+    const filePath = fileName.trim();
+    
+    try {
+      // 创建 FormData 上传文件到 MinIO
+      const formData = new FormData();
+      const blob = new Blob([tab.content], { type: 'text/plain' });
+      formData.append('file', blob, fileName);
+      formData.append('path', '');
+
+      await axios.post(`${API_BASE_URL}/bigdata-ide/files/upload`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      // 更新标签页状态
+      setTabs(prev => prev.map(t => {
+        if (t.id === tab.id) {
+          return { 
+            ...t, 
+            name: fileName,
+            path: filePath,
+            modified: false 
+          };
+        }
+        return t;
+      }));
+
+      console.log('文件保存成功:', filePath);
+    } catch (error) {
+      console.error('保存失败:', error);
+      alert(`保存失败: ${error.response?.data?.detail || error.message}`);
+    }
+  }, [tabs, activeTab, activeTabId]);
 
   // 更新标签页内容
   const handleCodeChange = (newCode) => {
@@ -216,31 +269,54 @@ const TabbedEditor = forwardRef(({
               }`}
               onClick={() => setActiveTabId(tab.id)}
             >
-              <span className="text-xs truncate max-w-[150px]" title={tab.name}>
-                {tab.name}
-              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-xs truncate max-w-[150px]">
+                    {tab.name}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{tab.name}</p>
+                </TooltipContent>
+              </Tooltip>
               {tab.modified && (
                 <span className="text-xs text-orange-500">●</span>
               )}
-              <button
-                onClick={(e) => handleCloseTab(tab.id, e)}
-                className="ml-1 hover:bg-accent rounded px-1 text-muted-foreground hover:text-foreground"
-                title="关闭"
-              >
-                ✕
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => handleCloseTab(tab.id, e)}
+                    className="ml-1 h-5 w-5"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>关闭</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
           ))}
         </div>
-        <button
-          onClick={handleNewTab}
-          className="px-3 py-2 hover:bg-accent border-l border-border"
-          title="新建标签页"
-        >
-          ➕
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleNewTab}
+              className="border-l border-border rounded-none"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>新建标签页</p>
+          </TooltipContent>
+        </Tooltip>
         <div className="flex items-center gap-2 px-3 border-l border-border">
-          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+          <Label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
             <input
               type="checkbox"
               checked={autoSaveEnabled}
@@ -248,7 +324,7 @@ const TabbedEditor = forwardRef(({
               className="w-4 h-4"
             />
             <span>自动保存</span>
-          </label>
+          </Label>
         </div>
       </div>
 
@@ -262,9 +338,11 @@ const TabbedEditor = forwardRef(({
             onCodeChange={handleCodeChange}
             onExecute={handleExecuteCurrent}
             onSave={activeTab.path ? (path, content) => handleSave(activeTabId, true) : null}
+            onSaveAs={() => handleSaveAs(activeTabId)}
             isExecuting={isExecuting}
             filePath={activeTab.path}
             isModified={activeTab.modified}
+            theme={theme === 'dark' ? 'vs-dark' : 'vs'}
           />
         )}
       </div>
