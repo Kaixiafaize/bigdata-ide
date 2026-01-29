@@ -9,6 +9,8 @@ from . import files
 from . import editor
 from . import database
 from . import history
+from . import terminal
+from . import envs
 
 __all__ = [
     "kernel",
@@ -16,4 +18,6 @@ __all__ = [
     "editor",
     "database",
     "history",
+    "terminal",
+    "envs",
 ]

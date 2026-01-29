@@ -13,6 +13,14 @@ MINIO_SECRET_KEY = os.getenv('MINIO_SECRET_KEY', 'minioadmin')
 MINIO_SECURE = os.getenv('MINIO_SECURE', 'false').lower() == 'true'
 MINIO_BUCKET = os.getenv('MINIO_BUCKET', 'bigdata-ide')
 
+# 虚拟环境：本地缓存目录（创建/解压 venv 的目录）
+_script_dir = os.path.dirname(os.path.abspath(__file__))
+VENV_BASE_DIR = os.getenv('VENV_BASE_DIR', os.path.normpath(os.path.join(_script_dir, '..', '.venvs')))
+# 是否将虚拟环境持久化到 MinIO（True 时创建后上传、使用时按需下载到本地缓存）
+VENV_USE_MINIO = os.getenv('VENV_USE_MINIO', 'true').lower() == 'true'
+# MinIO 中 venv 归档对象前缀，单对象名为 {VENV_MINIO_PREFIX}{venv_id}.tar.gz
+VENV_MINIO_PREFIX = os.getenv('VENV_MINIO_PREFIX', 'venvs/')
+
 # Kernel 配置映射
 KERNEL_CONFIGS = {
     'python': {

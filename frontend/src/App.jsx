@@ -4,14 +4,17 @@ import TabbedEditor from './components/TabbedEditor';
 import FileManager from './components/FileManager';
 import DatabaseConnectionManager from './components/DatabaseConnectionManager';
 import ExecutionHistory from './components/ExecutionHistory';
+import TerminalPanel from './components/TerminalPanel';
+import VenvManager from './components/VenvManager';
 import { Button } from './components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from './components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 import { Badge } from './components/ui/badge';
 import { Separator } from './components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './components/ui/tooltip';
-import { Sun, Moon, Code, Database as DatabaseIcon, FileEdit, Folder, History, ChevronUp, ChevronDown, CheckCircle, XCircle, Loader2, Sparkles } from 'lucide-react';
+import { Sun, Moon, Code, Database as DatabaseIcon, FileEdit, Folder, History, ChevronUp, ChevronDown, CheckCircle, XCircle, Loader2, Sparkles, Box } from 'lucide-react';
 
-// Jupyter Server API 基础 URL
+// API 基础 URL
 const getAPIBaseURL = () => {
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
@@ -34,6 +37,9 @@ function App() {
   const [kernelStatus, setKernelStatus] = useState('idle');
   const [sessionInfoCollapsed, setSessionInfoCollapsed] = useState(false);
   const [outputPanelCollapsed, setOutputPanelCollapsed] = useState(false);
+  const [bottomPanelTab, setBottomPanelTab] = useState('output'); // 'output' | 'terminal'
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [selectedVenvId, setSelectedVenvId] = useState(null); // 选中的虚拟环境 id，null 表示系统默认
   const [theme, setTheme] = useState('dark'); // 'light' or 'dark'
   const wsRef = useRef(null);
   const messageQueueRef = useRef([]);
@@ -75,10 +81,12 @@ function App() {
         wsRef.current = null;
       }
 
-      // 创建新会话
+      // 创建新会话（可选携带 venv_id）
+      const body = { kernel_type: kernelTypeId };
+      if (selectedVenvId) body.venv_id = selectedVenvId;
       const response = await axios.post(
         `${API_BASE_URL}/bigdata-ide/sessions`,
-        { kernel_type: kernelTypeId }
+        body
       );
       
       const session = response.data;
@@ -138,7 +146,7 @@ function App() {
       setErrors(`创建会话失败: ${error.response?.data?.message || error.message}`);
       return null;
     }
-  }, [kernelTypes, selectedKernelType]);
+  }, [kernelTypes, selectedKernelType, selectedVenvId]);
 
   // 处理 FastAPI WebSocket 消息
   const handleFastAPIMessage = (msg) => {
@@ -268,6 +276,17 @@ function App() {
     setActiveTab('editor');
   };
 
+  // 选择虚拟环境：切换后清空当前会话，下次执行时用新环境创建会话
+  const handleSelectVenv = (venvId) => {
+    setSelectedVenvId(venvId);
+    setSessionId(null);
+    setKernelId(null);
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+  };
+
   // 处理数据库连接选择
   const handleConnectionSelect = (connectionString) => {
     // 在 SQL kernel 中使用选中的连接
@@ -389,44 +408,66 @@ function App() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* 左侧菜单栏 - 标签页 */}
-        <aside className="w-48 bg-card border-r flex flex-col">
-          <div className="p-2 space-y-1">
-            <Button
-              variant={activeTab === 'editor' ? "default" : "ghost"}
-              className="w-full justify-start gap-2"
-              onClick={() => setActiveTab('editor')}
-            >
-              <FileEdit className="h-4 w-4" />
-              <span>代码编辑器</span>
-            </Button>
-            <Button
-              variant={activeTab === 'files' ? "default" : "ghost"}
-              className="w-full justify-start gap-2"
-              onClick={() => setActiveTab('files')}
-            >
-              <Folder className="h-4 w-4" />
-              <span>文件管理</span>
-            </Button>
-            <Button
-              variant={activeTab === 'database' ? "default" : "ghost"}
-              className="w-full justify-start gap-2"
-              onClick={() => setActiveTab('database')}
-            >
-              <DatabaseIcon className="h-4 w-4" />
-              <span>数据库连接</span>
-            </Button>
-            <Button
-              variant={activeTab === 'history' ? "default" : "ghost"}
-              className="w-full justify-start gap-2"
-              onClick={() => setActiveTab('history')}
-            >
-              <History className="h-4 w-4" />
-              <span>执行历史</span>
-            </Button>
-          </div>
+      {/* 左侧菜单栏 - 标签页 */}
+      <aside
+        className={`${sidebarCollapsed ? 'w-10' : 'w-48'} bg-card border-r flex flex-col relative transition-all duration-300`}
+      >
+        {/* 右侧“小旋钮”收起/展开按钮 */}
+        <button
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          className="absolute -right-3 top-4 z-10 w-6 h-6 bg-card border border-border rounded-full flex items-center justify-center shadow-sm hover:bg-accent transition-colors"
+          title={sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'}
+        >
+          <span className="text-xs text-muted-foreground">
+            {sidebarCollapsed ? '▶' : '◀'}
+          </span>
+        </button>
 
-          {/* 会话信息 - 可收起 */}
+        <div className="p-2 space-y-1">
+          <Button
+            variant={activeTab === 'editor' ? "default" : "ghost"}
+            className={`w-full gap-2 ${sidebarCollapsed ? 'justify-center' : 'justify-start'}`}
+            onClick={() => setActiveTab('editor')}
+          >
+            <FileEdit className="h-4 w-4" />
+            {!sidebarCollapsed && <span>代码编辑器</span>}
+          </Button>
+          <Button
+            variant={activeTab === 'files' ? "default" : "ghost"}
+            className={`w-full gap-2 ${sidebarCollapsed ? 'justify-center' : 'justify-start'}`}
+            onClick={() => setActiveTab('files')}
+          >
+            <Folder className="h-4 w-4" />
+            {!sidebarCollapsed && <span>文件管理</span>}
+          </Button>
+          <Button
+            variant={activeTab === 'database' ? "default" : "ghost"}
+            className={`w-full gap-2 ${sidebarCollapsed ? 'justify-center' : 'justify-start'}`}
+            onClick={() => setActiveTab('database')}
+          >
+            <DatabaseIcon className="h-4 w-4" />
+            {!sidebarCollapsed && <span>数据库连接</span>}
+          </Button>
+          <Button
+            variant={activeTab === 'history' ? "default" : "ghost"}
+            className={`w-full gap-2 ${sidebarCollapsed ? 'justify-center' : 'justify-start'}`}
+            onClick={() => setActiveTab('history')}
+          >
+            <History className="h-4 w-4" />
+            {!sidebarCollapsed && <span>执行历史</span>}
+          </Button>
+          <Button
+            variant={activeTab === 'venv' ? "default" : "ghost"}
+            className={`w-full gap-2 ${sidebarCollapsed ? 'justify-center' : 'justify-start'}`}
+            onClick={() => setActiveTab('venv')}
+          >
+            <Box className="h-4 w-4" />
+            {!sidebarCollapsed && <span>虚拟环境</span>}
+          </Button>
+        </div>
+
+        {/* 会话信息 - 可收起（收起侧边栏时整体隐藏） */}
+        {!sidebarCollapsed && (
           <div className="mt-auto border-t p-2">
             <Button
               variant="ghost"
@@ -468,7 +509,8 @@ function App() {
               </Card>
             )}
           </div>
-        </aside>
+        )}
+      </aside>
 
         {/* 主内容区 */}
         <main className="flex-1 flex flex-col overflow-hidden">
@@ -498,14 +540,23 @@ function App() {
                 </div>
               </div>
 
-              {/* 输出面板 */}
+              {/* 输出面板：执行结果 + 终端 */}
               <Card className={`${outputPanelCollapsed ? 'h-10' : 'h-80'} flex-shrink-0 flex flex-col border-t overflow-hidden transition-all duration-300`}>
-                <CardHeader 
+                <CardHeader
                   className="px-4 py-2 flex-shrink-0 cursor-pointer"
                   onClick={() => setOutputPanelCollapsed(!outputPanelCollapsed)}
                 >
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm">执行结果</CardTitle>
+                  <div className="flex items-center justify-between w-full">
+                    <Tabs value={bottomPanelTab} onValueChange={setBottomPanelTab} onClick={(e) => e.stopPropagation()}>
+                      <TabsList className="h-8 p-0 bg-transparent gap-0">
+                        <TabsTrigger value="output" className="rounded px-3 text-sm data-[state=active]:bg-accent">
+                          执行结果
+                        </TabsTrigger>
+                        <TabsTrigger value="terminal" className="rounded px-3 text-sm data-[state=active]:bg-accent">
+                          终端
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
@@ -526,45 +577,51 @@ function App() {
                   </div>
                 </CardHeader>
                 {!outputPanelCollapsed && (
-                <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {errors && (
-                    <Card className="border-destructive bg-destructive/10">
-                      <CardContent className="p-3">
-                        <h4 className="text-sm font-semibold text-destructive mb-2 flex items-center gap-2">
-                          <XCircle className="h-4 w-4" />
-                          错误
-                        </h4>
-                        <pre className="text-sm text-destructive/90 whitespace-pre-wrap font-mono">{errors}</pre>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {output && (
-                    <Card>
-                      <CardContent className="p-3">
-                        <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                          输出
-                        </h4>
-                        <pre className="text-sm text-green-600 dark:text-green-400 whitespace-pre-wrap font-mono">{output}</pre>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {!output && !errors && !isExecuting && (
-                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                      <p className="text-sm">执行代码后，结果将显示在这里</p>
-                      <p className="text-xs mt-2">快捷键: Ctrl+Enter 执行代码</p>
-                    </div>
-                  )}
-
-                  {isExecuting && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="text-sm">正在执行...</span>
-                    </div>
-                  )}
-                </CardContent>
+                  <CardContent className="flex-1 min-h-0 flex flex-col p-0 overflow-hidden">
+                    {bottomPanelTab === 'output' && (
+                      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                        {errors && (
+                          <Card className="border-destructive bg-destructive/10">
+                            <CardContent className="p-3">
+                              <h4 className="text-sm font-semibold text-destructive mb-2 flex items-center gap-2">
+                                <XCircle className="h-4 w-4" />
+                                错误
+                              </h4>
+                              <pre className="text-sm text-destructive/90 whitespace-pre-wrap font-mono">{errors}</pre>
+                            </CardContent>
+                          </Card>
+                        )}
+                        {output && (
+                          <Card>
+                            <CardContent className="p-3">
+                              <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                                <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                输出
+                              </h4>
+                              <pre className="text-sm text-green-600 dark:text-green-400 whitespace-pre-wrap font-mono">{output}</pre>
+                            </CardContent>
+                          </Card>
+                        )}
+                        {!output && !errors && !isExecuting && (
+                          <div className="flex flex-col items-center justify-center h-full text-muted-foreground min-h-[120px]">
+                            <p className="text-sm">执行代码后，结果将显示在这里</p>
+                            <p className="text-xs mt-2">快捷键: Ctrl+Enter 执行代码</p>
+                          </div>
+                        )}
+                        {isExecuting && (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="text-sm">正在执行...</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {bottomPanelTab === 'terminal' && (
+                      <div className="flex-1 min-h-0">
+                        <TerminalPanel theme={theme} />
+                      </div>
+                    )}
+                  </CardContent>
                 )}
               </Card>
             </div>
@@ -600,6 +657,17 @@ function App() {
                     handleExecute(code);
                   }, 100);
                 }}
+              />
+            </div>
+          )}
+
+          {/* 虚拟环境管理标签页：点开时列出所有虚拟环境 */}
+          {activeTab === 'venv' && (
+            <div className="flex-1 overflow-hidden">
+              <VenvManager
+                selectedVenvId={selectedVenvId}
+                onSelectVenv={handleSelectVenv}
+                isActive={activeTab === 'venv'}
               />
             </div>
           )}

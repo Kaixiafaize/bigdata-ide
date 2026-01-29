@@ -1,0 +1,54 @@
+# BigData IDE 一键部署：应用 + MinIO
+# 使用: docker compose up -d
+# 访问: http://localhost:8888（IDE）  http://localhost:9001（MinIO 控制台）
+
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: bigdata-ide-minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"   # API
+      - "9001:9001"   # Web 控制台
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+
+  # 创建 backend/.env 中 MINIO_BUCKET 指定的桶，完成后退出
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    env_file:
+      - backend/.env
+    entrypoint: >
+      /bin/sh -c "
+      sleep 2;
+      mc alias set myminio http://minio:9000 $$MINIO_ACCESS_KEY $$MINIO_SECRET_KEY;
+      mc mb myminio/$$MINIO_BUCKET --ignore-existing;
+      echo Bucket $$MINIO_BUCKET ready;
+      "
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bigdata-ide-app
+    ports:
+      - "8888:8888"
+    env_file:
+      - backend/.env
+    environment:
+      # 容器内必须用服务名访问 MinIO，覆盖 backend/.env 里的 MINIO_ENDPOINT
+      MINIO_ENDPOINT: minio:9000
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  minio_data:

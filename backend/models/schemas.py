@@ -8,6 +8,7 @@ from pydantic import BaseModel
 class SessionCreate(BaseModel):
     kernel_type: str = 'python'
     path: Optional[str] = None
+    venv_id: Optional[str] = None  # 选中的虚拟环境 id，kernel 将使用该环境的 Python
 
 
 class ExecuteRequest(BaseModel):
@@ -60,6 +61,17 @@ class DatabaseConnectionResponse(BaseModel):
     type: str
     connection_string: str
     created_at: Optional[str] = None
+
+
+class VenvCreate(BaseModel):
+    name: str  # 环境名称，对应目录名
+
+
+class VenvItem(BaseModel):
+    id: str  # 目录名
+    name: str
+    path: str  # 绝对路径
+    python_path: str  # Python 可执行文件路径
 
 
 class ExecutionHistory(BaseModel):

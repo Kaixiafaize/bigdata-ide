@@ -4,6 +4,7 @@ Kernel 相关路由
 import asyncio
 import json
 import logging
+import re
 from typing import Dict, Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
@@ -15,9 +16,20 @@ from config import KERNEL_CONFIGS
 from models.schemas import SessionCreate, ExecuteRequest, ExecuteResponse
 from services.kernel_service import kernel_service
 from services.history_service import history_service
+from services.venv_service import get_venv_python
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/bigdata-ide", tags=["kernel"])
+
+
+ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def strip_ansi(text: str) -> str:
+    """去掉 Jupyter 返回中的 ANSI 颜色控制符，避免前端出现乱码。"""
+    if not isinstance(text, str):
+        return text
+    return ANSI_ESCAPE_RE.sub("", text)
 
 
 @router.get("/kernel-types")
@@ -57,11 +69,17 @@ async def get_kernel_types():
 
 @router.post("/sessions")
 async def create_session(session_data: SessionCreate):
-    """创建会话"""
+    """创建会话。可选 venv_id：使用该虚拟环境的 Python 启动 kernel。"""
+    python_path = None
+    if session_data.venv_id:
+        python_path = get_venv_python(session_data.venv_id)
+        if not python_path:
+            raise HTTPException(status_code=400, detail=f"虚拟环境不存在: {session_data.venv_id}")
     try:
         result = await kernel_service.create_session(
             session_data.kernel_type,
-            session_data.path
+            session_data.path,
+            python_path=python_path,
         )
         result['status'] = 'ok'
         return result
@@ -122,18 +140,24 @@ async def execute_code(request: ExecuteRequest):
                 content = msg['content']
                 
                 if msg_type == 'stream':
-                    output.append(content.get('text', ''))
+                    text = strip_ansi(content.get('text', ''))
+                    output.append(text)
                 elif msg_type == 'execute_result':
                     data = content.get('data', {})
                     result = data.get('text/plain', '') or data.get('text/html', '') or str(data)
+                    result = strip_ansi(result)
                     output.append(result)
                 elif msg_type == 'display_data':
                     data = content.get('data', {})
                     display_text = data.get('text/plain', '') or data.get('text/html', '') or str(data)
+                    display_text = strip_ansi(display_text)
                     output.append(display_text)
                 elif msg_type == 'error':
                     traceback = content.get('traceback', [])
-                    errors.append('\n'.join(traceback) if traceback else f"{content.get('ename', 'Error')}: {content.get('evalue', '')}")
+                    if traceback:
+                        errors.append(strip_ansi('\n'.join(traceback)))
+                    else:
+                        errors.append(strip_ansi(f"{content.get('ename', 'Error')}: {content.get('evalue', '')}"))
                 elif msg_type == 'status':
                     execution_state = content.get('execution_state', 'idle')
                     if execution_state == 'idle':
@@ -146,7 +170,7 @@ async def execute_code(request: ExecuteRequest):
                         if shell_msg['content'].get('status') == 'error':
                             traceback = shell_msg['content'].get('traceback', [])
                             if traceback:
-                                errors.append('\n'.join(traceback))
+                                errors.append(strip_ansi('\n'.join(traceback)))
                         break
                 except asyncio.TimeoutError:
                     break
@@ -158,7 +182,7 @@ async def execute_code(request: ExecuteRequest):
                 if shell_msg['content'].get('status') == 'error':
                     traceback = shell_msg['content'].get('traceback', [])
                     if traceback and not errors:
-                        errors.append('\n'.join(traceback))
+                        errors.append(strip_ansi('\n'.join(traceback)))
         except asyncio.TimeoutError:
             pass
         
@@ -226,7 +250,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         content = msg['content']
                         
                         if msg_type == 'stream':
-                            text = content.get('text', '')
+                            text = strip_ansi(content.get('text', ''))
                             output.append(text)
                             await websocket.send_json({
                                 'type': 'stream',
@@ -235,6 +259,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         elif msg_type == 'execute_result':
                             data = content.get('data', {})
                             result = data.get('text/plain', '') or data.get('text/html', '') or str(data)
+                            result = strip_ansi(result)
                             output.append(result)
                             await websocket.send_json({
                                 'type': 'result',
@@ -242,7 +267,10 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                             })
                         elif msg_type == 'error':
                             traceback = content.get('traceback', [])
-                            error_msg = '\n'.join(traceback) if traceback else f"{content.get('ename', 'Error')}: {content.get('evalue', '')}"
+                            if traceback:
+                                error_msg = strip_ansi('\n'.join(traceback))
+                            else:
+                                error_msg = strip_ansi(f"{content.get('ename', 'Error')}: {content.get('evalue', '')}")
                             errors.append(error_msg)
                             await websocket.send_json({
                                 'type': 'error',
@@ -264,7 +292,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                                 if shell_msg['content'].get('status') == 'error':
                                     traceback = shell_msg['content'].get('traceback', [])
                                     if traceback:
-                                        error_msg = '\n'.join(traceback)
+                                        error_msg = strip_ansi('\n'.join(traceback))
                                         errors.append(error_msg)
                                         await websocket.send_json({
                                             'type': 'error',

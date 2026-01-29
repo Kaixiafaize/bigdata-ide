@@ -6,11 +6,13 @@ BigData IDE - 应用入口
 """
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-from routers import kernel, files, editor, database, history
+from routers import kernel, files, editor, database, history, terminal, envs
 from services.kernel_service import kernel_service
 
 # 配置日志
@@ -51,7 +53,13 @@ app.include_router(files.router)
 app.include_router(editor.router)
 app.include_router(database.router)
 app.include_router(history.router)
+app.include_router(terminal.router)
+app.include_router(envs.router)
 
+# 生产环境（Docker）：挂载前端构建产物，同一端口提供前后端
+_static_dir = Path(__file__).resolve().parent / "static"
+if _static_dir.is_dir():
+    app.mount("/", StaticFiles(directory=str(_static_dir), html=True), name="static")
 
 if __name__ == '__main__':
     import uvicorn

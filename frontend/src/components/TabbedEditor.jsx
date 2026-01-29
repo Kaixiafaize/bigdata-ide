@@ -24,9 +24,8 @@ const TabbedEditor = forwardRef(({
   createSession
 }, ref) => {
   const [tabs, setTabs] = useState(() => {
-    const defaultContent = language === 'sql' 
-      ? '-- 输入你的 SQL 代码\nSELECT 1 as test;'
-      : '# 输入你的代码\nprint("Hello, BigData IDE!")';
+    // 默认新建标签页不再填充示例代码，保持空白，避免干扰用户输入
+    const defaultContent = '';
     return [
       { id: 'new-1', name: 'Untitled-1', content: defaultContent, path: null, modified: false, language: language || 'python' }
     ];
@@ -163,9 +162,8 @@ const TabbedEditor = forwardRef(({
   // 新建标签页
   const handleNewTab = () => {
     const newId = `new-${Date.now()}`;
-    const defaultContent = language === 'sql' 
-      ? '-- 输入你的 SQL 代码\nSELECT 1 as test;'
-      : '# 输入你的代码\nprint("Hello, BigData IDE!")';
+    // 新建标签页默认内容为空
+    const defaultContent = '';
     const newTab = {
       id: newId,
       name: `Untitled-${tabs.length + 1}`,

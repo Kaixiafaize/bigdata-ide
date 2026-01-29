@@ -166,5 +166,3 @@ htmlcov/
 docs/_build/
 docs/.doctrees/
 
-# Jupyter Server (if exists)
-jupyter_server/.ipynb_checkpoints/

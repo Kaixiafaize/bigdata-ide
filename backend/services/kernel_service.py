@@ -7,7 +7,7 @@ import uuid
 from typing import Dict, Any, Optional
 
 from jupyter_client import AsyncKernelManager, AsyncKernelClient
-from jupyter_client.kernelspec import KernelSpecManager
+from jupyter_client.kernelspec import KernelSpecManager, KernelSpec
 
 from config import KERNEL_CONFIGS
 
@@ -88,32 +88,45 @@ print("示例: %sql SELECT 1")
         # 如果不是明显的 SQL，也尝试用 %sql 包装（让 ipython-sql 处理）
         return f"%sql {code}"
     
-    async def create_session(self, kernel_type: str, path: Optional[str] = None) -> Dict[str, Any]:
-        """创建会话"""
+    async def create_session(
+        self,
+        kernel_type: str,
+        path: Optional[str] = None,
+        python_path: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """创建会话。python_path 不为空时使用该 Python 启动 kernel（用于虚拟环境）。"""
         if kernel_type not in KERNEL_CONFIGS:
             raise ValueError(f"Unsupported kernel type: {kernel_type}")
         
         config = KERNEL_CONFIGS[kernel_type]
         kernel_name = config['name']
         
-        # 检查 kernel 是否可用
-        try:
-            specs = self.kernel_spec_manager.get_all_specs()
-            if kernel_name not in specs:
-                if 'fallback' in config:
-                    kernel_name = config['fallback']
-                    logger.info(f"Kernel '{config['name']}' not found, using fallback '{kernel_name}'")
-                else:
-                    raise ValueError(f"Kernel '{kernel_name}' not available")
-        except Exception as e:
-            logger.warning(f"Error checking kernel spec: {e}")
-        
         # 生成 session_id 和 kernel_id
         session_id = path or f"session_{uuid.uuid4().hex[:8]}"
         kernel_id = f"kernel_{uuid.uuid4().hex[:8]}"
         
-        # 创建 kernel manager
-        km = AsyncKernelManager(kernel_name=kernel_name)
+        if python_path:
+            # 使用指定 Python（虚拟环境）启动 kernel
+            spec = KernelSpec(
+                argv=[python_path, "-m", "ipykernel", "-f", "{connection_file}"],
+                display_name=config.get('display_name', 'Python') + f" ({python_path})",
+                language=config.get('language', 'python'),
+            )
+            km = AsyncKernelManager(kernel_spec=spec)
+        else:
+            # 使用系统 kernel spec
+            try:
+                specs = self.kernel_spec_manager.get_all_specs()
+                if kernel_name not in specs:
+                    if 'fallback' in config:
+                        kernel_name = config['fallback']
+                        logger.info(f"Kernel '{config['name']}' not found, using fallback '{kernel_name}'")
+                    else:
+                        raise ValueError(f"Kernel '{kernel_name}' not available")
+            except Exception as e:
+                logger.warning(f"Error checking kernel spec: {e}")
+            km = AsyncKernelManager(kernel_name=kernel_name)
+        
         await km.start_kernel()
         
         # 创建 kernel client
