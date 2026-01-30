@@ -85,3 +85,4 @@ class ExecutionHistory(BaseModel):
     execution_time: float  # 执行耗时（秒）
     created_at: str
     session_id: Optional[str] = None
+    file_path: Optional[str] = None  # 执行的代码所在文件路径（文件管理下的路径，如 folder/foo.py）

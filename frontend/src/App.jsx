@@ -6,13 +6,15 @@ import DatabaseConnectionManager from './components/DatabaseConnectionManager';
 import ExecutionHistory from './components/ExecutionHistory';
 import TerminalPanel from './components/TerminalPanel';
 import VenvManager from './components/VenvManager';
+import Login from './components/Login';
+import Register from './components/Register';
 import { Button } from './components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 import { Badge } from './components/ui/badge';
 import { Separator } from './components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './components/ui/tooltip';
-import { Sun, Moon, Code, Database as DatabaseIcon, FileEdit, Folder, History, ChevronUp, ChevronDown, CheckCircle, XCircle, Loader2, Sparkles, Box } from 'lucide-react';
+import { Sun, Moon, Code, Database as DatabaseIcon, FileEdit, Folder, History, ChevronUp, ChevronDown, CheckCircle, XCircle, Loader2, Sparkles, Box, LogOut, User } from 'lucide-react';
 
 // API 基础 URL
 const getAPIBaseURL = () => {
@@ -24,7 +26,11 @@ const getAPIBaseURL = () => {
 
 const API_BASE_URL = getAPIBaseURL();
 
+const TOKEN_KEY = 'bigdata_ide_token';
+
 function App() {
+  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
+  const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('editor'); // 'editor', 'files', 'database', 'history'
   const [kernelTypes, setKernelTypes] = useState([]);
   const [selectedKernelType, setSelectedKernelType] = useState(null);
@@ -41,9 +47,50 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedVenvId, setSelectedVenvId] = useState(null); // 选中的虚拟环境 id，null 表示系统默认
   const [theme, setTheme] = useState('dark'); // 'light' or 'dark'
+  const [pendingFileOpen, setPendingFileOpen] = useState(null); // 从文件管理打开时 { path, name, content, fileType }
+  const [showRegister, setShowRegister] = useState(false); // 未登录时显示注册页
   const wsRef = useRef(null);
   const messageQueueRef = useRef([]);
   const tabbedEditorRef = useRef(null);
+
+  // Token 变化：写 localStorage、设置 axios 头、拉取当前用户
+  useEffect(() => {
+    if (token) {
+      localStorage.setItem(TOKEN_KEY, token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      axios.get(`${API_BASE_URL}/bigdata-ide/auth/me`).then((r) => {
+        if (r.data?.username) setUser({ username: r.data.username });
+        else setToken(null);
+      }).catch(() => setToken(null));
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+      delete axios.defaults.headers.common['Authorization'];
+      setUser(null);
+    }
+  }, [token]);
+
+  // 401 时清除登录
+  useEffect(() => {
+    const id = axios.interceptors.response.use(
+      (r) => r,
+      (err) => {
+        if (err.response?.status === 401) setToken(null);
+        return Promise.reject(err);
+      }
+    );
+    return () => axios.interceptors.response.eject(id);
+  }, []);
+
+  const handleLogin = useCallback((accessToken, username) => {
+    localStorage.setItem(TOKEN_KEY, accessToken);
+    axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+    setToken(accessToken);
+    setUser({ username });
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    setToken(null);
+  }, []);
 
   // 加载可用的 kernel 类型
   useEffect(() => {
@@ -190,8 +237,8 @@ function App() {
     }
   };
 
-  // 执行代码
-  const handleExecute = useCallback(async (codeToExecute) => {
+  // 执行代码（filePath 为当前编辑文件在文件管理下的路径，用于执行历史展示）
+  const handleExecute = useCallback(async (codeToExecute, filePath = null) => {
     if (!codeToExecute.trim()) {
       setErrors('请输入代码');
       return;
@@ -238,6 +285,8 @@ function App() {
       const executeRequest = {
         type: 'execute',
         code: codeToExecute,
+        file_path: filePath || undefined,
+        username: user?.username || undefined,
       };
 
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -252,7 +301,7 @@ function App() {
       setIsExecuting(false);
       setKernelStatus('错误');
     }
-  }, [selectedKernelType, sessionId, kernelId, createSession]);
+  }, [selectedKernelType, sessionId, kernelId, createSession, user]);
 
   // 切换 kernel 类型
   const handleKernelTypeChange = async (kernelTypeId) => {
@@ -268,11 +317,9 @@ function App() {
     }
   };
 
-  // 处理文件打开
-  const handleFileOpen = (filename, content, fileType) => {
-    if (tabbedEditorRef.current && tabbedEditorRef.current.openFile) {
-      tabbedEditorRef.current.openFile(filename, filename, content, fileType);
-    }
+  // 处理文件打开：先记下待打开文件并切到编辑器，TabbedEditor 挂载后再打开（因文件管理下编辑器未挂载 ref 为 null）
+  const handleFileOpen = (filePath, fileName, content, fileType) => {
+    setPendingFileOpen({ path: filePath, name: fileName, content, fileType });
     setActiveTab('editor');
   };
 
@@ -334,6 +381,23 @@ function App() {
     }
   }, []);
 
+  if (!token) {
+    if (showRegister) {
+      return (
+        <Register
+          onRegister={handleLogin}
+          onSwitchToLogin={() => setShowRegister(false)}
+        />
+      );
+    }
+    return (
+      <Login
+        onLogin={handleLogin}
+        onSwitchToRegister={() => setShowRegister(true)}
+      />
+    );
+  }
+
   return (
     <TooltipProvider>
       <div className={`flex flex-col h-screen bg-background text-foreground ${theme === 'dark' ? 'dark' : ''}`}>
@@ -341,13 +405,24 @@ function App() {
         <header className="border-b bg-card">
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            {/* Logo */}
-            <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-primary to-primary/60 shadow-lg">
-              <div className="relative">
-                <Code className="h-6 w-6 text-primary-foreground" />
-                <Sparkles className="h-3 w-3 text-primary-foreground absolute -top-1 -right-1" />
-              </div>
-            </div>
+            {/* Logo：点击收起/展开侧边栏 */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  className="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-primary to-primary/60 shadow-lg hover:opacity-90 transition-opacity cursor-pointer"
+                >
+                  <div className="relative">
+                    <Code className="h-6 w-6 text-primary-foreground" />
+                    <Sparkles className="h-3 w-3 text-primary-foreground absolute -top-1 -right-1" />
+                  </div>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'}</p>
+              </TooltipContent>
+            </Tooltip>
             <div>
               <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
                 <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
@@ -357,6 +432,27 @@ function App() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            {user && (
+              <span className="text-sm text-muted-foreground flex items-center gap-1">
+                <User className="h-4 w-4" />
+                {user.username}
+              </span>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={handleLogout}
+                  variant="ghost"
+                  size="sm"
+                  title="退出登录"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>退出登录</p>
+              </TooltipContent>
+            </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -408,57 +504,46 @@ function App() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-      {/* 左侧菜单栏 - 标签页 */}
+      {/* 左侧菜单栏 - 收起时宽度为 0，不留空白 */}
       <aside
-        className={`${sidebarCollapsed ? 'w-10' : 'w-48'} bg-card border-r flex flex-col relative transition-all duration-300`}
+        className={`${sidebarCollapsed ? 'w-0 min-w-0 overflow-hidden border-r-0' : 'w-48'} bg-card border-r flex flex-col flex-shrink-0 transition-all duration-300`}
       >
-        {/* 右侧“小旋钮”收起/展开按钮 */}
-        <button
-          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          className="absolute -right-3 top-4 z-10 w-6 h-6 bg-card border border-border rounded-full flex items-center justify-center shadow-sm hover:bg-accent transition-colors"
-          title={sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'}
-        >
-          <span className="text-xs text-muted-foreground">
-            {sidebarCollapsed ? '▶' : '◀'}
-          </span>
-        </button>
-
         <div className="p-2 space-y-1">
           <Button
-            variant={activeTab === 'editor' ? "default" : "ghost"}
-            className={`w-full gap-2 ${sidebarCollapsed ? 'justify-center' : 'justify-start'}`}
+            variant="ghost"
+            className={`w-full gap-2 ${sidebarCollapsed ? 'justify-center' : 'justify-start'} ${activeTab === 'editor' ? 'bg-accent/50 border-l-2 border-primary rounded-l-none' : ''}`}
             onClick={() => setActiveTab('editor')}
           >
             <FileEdit className="h-4 w-4" />
             {!sidebarCollapsed && <span>代码编辑器</span>}
           </Button>
           <Button
-            variant={activeTab === 'files' ? "default" : "ghost"}
-            className={`w-full gap-2 ${sidebarCollapsed ? 'justify-center' : 'justify-start'}`}
+            variant="ghost"
+            className={`w-full gap-2 ${sidebarCollapsed ? 'justify-center' : 'justify-start'} ${activeTab === 'files' ? 'bg-accent/50 border-l-2 border-primary rounded-l-none' : ''}`}
             onClick={() => setActiveTab('files')}
           >
             <Folder className="h-4 w-4" />
             {!sidebarCollapsed && <span>文件管理</span>}
           </Button>
           <Button
-            variant={activeTab === 'database' ? "default" : "ghost"}
-            className={`w-full gap-2 ${sidebarCollapsed ? 'justify-center' : 'justify-start'}`}
+            variant="ghost"
+            className={`w-full gap-2 ${sidebarCollapsed ? 'justify-center' : 'justify-start'} ${activeTab === 'database' ? 'bg-accent/50 border-l-2 border-primary rounded-l-none' : ''}`}
             onClick={() => setActiveTab('database')}
           >
             <DatabaseIcon className="h-4 w-4" />
             {!sidebarCollapsed && <span>数据库连接</span>}
           </Button>
           <Button
-            variant={activeTab === 'history' ? "default" : "ghost"}
-            className={`w-full gap-2 ${sidebarCollapsed ? 'justify-center' : 'justify-start'}`}
+            variant="ghost"
+            className={`w-full gap-2 ${sidebarCollapsed ? 'justify-center' : 'justify-start'} ${activeTab === 'history' ? 'bg-accent/50 border-l-2 border-primary rounded-l-none' : ''}`}
             onClick={() => setActiveTab('history')}
           >
             <History className="h-4 w-4" />
             {!sidebarCollapsed && <span>执行历史</span>}
           </Button>
           <Button
-            variant={activeTab === 'venv' ? "default" : "ghost"}
-            className={`w-full gap-2 ${sidebarCollapsed ? 'justify-center' : 'justify-start'}`}
+            variant="ghost"
+            className={`w-full gap-2 ${sidebarCollapsed ? 'justify-center' : 'justify-start'} ${activeTab === 'venv' ? 'bg-accent/50 border-l-2 border-primary rounded-l-none' : ''}`}
             onClick={() => setActiveTab('venv')}
           >
             <Box className="h-4 w-4" />
@@ -466,9 +551,9 @@ function App() {
           </Button>
         </div>
 
-        {/* 会话信息 - 可收起（收起侧边栏时整体隐藏） */}
+        {/* 会话信息 - 贴底，避免下方大片留白 */}
         {!sidebarCollapsed && (
-          <div className="mt-auto border-t p-2">
+          <div className="border-t p-2 mt-auto flex-shrink-0">
             <Button
               variant="ghost"
               onClick={() => setSessionInfoCollapsed(!sessionInfoCollapsed)}
@@ -523,6 +608,8 @@ function App() {
                 <div className="flex-1 min-h-0 overflow-hidden">
                   <TabbedEditor
                     ref={tabbedEditorRef}
+                    pendingFileOpen={pendingFileOpen}
+                    onFileOpened={() => setPendingFileOpen(null)}
                     onExecute={handleExecute}
                     isExecuting={isExecuting}
                     kernelType={selectedKernelType}

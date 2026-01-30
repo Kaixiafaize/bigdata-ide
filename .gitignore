@@ -81,6 +81,9 @@ ehthumbs.db
 Thumbs.db
 desktop.ini
 
+# 文件权限 SQLite 数据目录
+data/
+
 # Temporary files
 *.tmp
 *.temp

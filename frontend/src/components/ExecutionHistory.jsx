@@ -202,6 +202,11 @@ const ExecutionHistory = ({ onReExecute }) => {
                         {formatExecutionTime(item.execution_time)}
                       </span>
                     </div>
+                    {item.file_path != null && item.file_path !== '' && (
+                      <div className="text-xs text-muted-foreground mt-0.5 font-mono break-all" title={item.file_path}>
+                        文件: {item.file_path}
+                      </div>
+                    )}
                     <div className="text-xs text-foreground font-mono mt-1 break-all">
                       {isExpanded ? item.code : truncateCode(item.code)}
                     </div>
@@ -252,6 +257,12 @@ const ExecutionHistory = ({ onReExecute }) => {
               {isExpanded && (
                 <div className="px-3 pb-3 border-t bg-background">
                   <div className="mt-3 space-y-3">
+                    {item.file_path != null && item.file_path !== '' && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-foreground mb-1">文件路径:</h4>
+                        <p className="text-xs font-mono text-muted-foreground break-all">{item.file_path}</p>
+                      </div>
+                    )}
                     {/* 代码 */}
                     <div>
                       <h4 className="text-xs font-semibold text-foreground mb-1">代码:</h4>

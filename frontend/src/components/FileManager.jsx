@@ -439,7 +439,7 @@ const FileManager = ({ onFileSelect, onFileOpen }) => {
       });
       
       if (onFileOpen) {
-        onFileOpen(file.name, response.data, getFileType(file.name));
+        onFileOpen(file.path, file.name, response.data, getFileType(file.name));
       }
     } catch (err) {
       setError(`打开文件失败: ${err.response?.data?.detail || err.message}`);

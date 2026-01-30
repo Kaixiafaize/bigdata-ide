@@ -4,11 +4,12 @@
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
 from models.schemas import SaveCodeRequest
 from services.file_service import file_service
+from routers.auth import get_current_user_required
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/bigdata-ide", tags=["editor"])
@@ -20,20 +21,24 @@ class FormatCodeRequest(BaseModel):
 
 
 @router.post("/editor/save")
-async def save_code(request: SaveCodeRequest):
-    """保存代码到文件"""
+async def save_code(
+    request: SaveCodeRequest,
+    current_user: str = Depends(get_current_user_required),
+):
+    """保存代码到文件（需登录，按权限校验）"""
     if not file_service.is_available():
         raise HTTPException(status_code=503, detail="MinIO client not available")
-    
     try:
-        # 上传文件内容到 MinIO
         file_content = request.content.encode('utf-8')
         result = file_service.upload_file(
             file_content,
             request.path,
-            'text/plain'
+            'text/plain',
+            current_user=current_user,
         )
         return {'status': 'ok', 'path': request.path}
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
         logger.error(f"Error saving code: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

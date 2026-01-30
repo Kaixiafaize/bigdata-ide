@@ -223,6 +223,8 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             
             if message.get('type') == 'execute':
                 code = message.get('code', '')
+                file_path = message.get('file_path')  # 执行的代码所在文件路径（文件管理下）
+                username = message.get('username')    # 当前用户（前端从 /auth/me 获取后随消息发送）
                 start_time = time.time()
                 
                 # 如果是 SQL kernel，包装代码
@@ -319,7 +321,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     'status': 'ok' if not final_errors else 'error'
                 })
                 
-                # 记录执行历史
+                # 记录执行历史（含文件路径：哪个文件夹下的哪个文件）
                 try:
                     language = config.get('language', 'python')
                     status = 'error' if final_errors else 'success'
@@ -331,7 +333,9 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         errors=final_errors,
                         status=status,
                         execution_time=execution_time,
-                        session_id=session_id
+                        session_id=session_id,
+                        file_path=file_path,
+                        username=username,
                     )
                 except Exception as e:
                     logger.error(f"Error saving execution history: {e}", exc_info=True)

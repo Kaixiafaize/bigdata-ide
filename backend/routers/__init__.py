@@ -4,6 +4,7 @@
 包含所有 API 路由模块
 """
 
+from . import auth
 from . import kernel
 from . import files
 from . import editor
@@ -13,6 +14,7 @@ from . import terminal
 from . import envs
 
 __all__ = [
+    "auth",
     "kernel",
     "files",
     "editor",

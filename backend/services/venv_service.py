@@ -1,20 +1,22 @@
 """
-虚拟环境管理：本地缓存 + 可选 MinIO 持久化。
-- 创建：本地建 venv → 打包上传 MinIO，保留本地缓存。
+虚拟环境管理：本地缓存 + 可选 MinIO 持久化 + 业务库 venv_meta 表。
+- 创建：本地建 venv → 打包上传 MinIO，写入 venv_meta。
 - 列举：从 MinIO 列举（若启用），path/python_path 仅在本机已缓存时填充。
 - 使用：get_venv_python 时若本地无则从 MinIO 下载解压到缓存再返回路径。
-- 删除：从 MinIO 与本地缓存同时删除。
+- 删除：从 MinIO、本地缓存、venv_meta 同时删除。
 """
 import os
 import sys
 import logging
 import subprocess
 import tarfile
+from datetime import datetime
 from pathlib import Path
 from io import BytesIO
 from typing import List, Optional
 
 from config import VENV_BASE_DIR, VENV_USE_MINIO, VENV_MINIO_PREFIX
+from services.db import get_conn
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +108,7 @@ def list_venvs() -> List[dict]:
                 "path": str(venv_root.resolve()) if venv_root.is_dir() else None,
                 "python_path": str(python_path.resolve()) if python_path else None,
             })
+        _merge_venv_meta(result)
         return sorted(result, key=lambda x: x["name"])
     # 仅本地
     result = []
@@ -121,10 +124,22 @@ def list_venvs() -> List[dict]:
             "path": str(child.resolve()),
             "python_path": str(python_path.resolve()),
         })
+    _merge_venv_meta(result)
     return sorted(result, key=lambda x: x["name"])
 
 
-def create_venv(name: str) -> dict:
+def _merge_venv_meta(items: List[dict]) -> None:
+    """从 venv_meta 表补充 created_by 到列表项（就地修改）。"""
+    if not items:
+        return
+    with get_conn() as c:
+        rows = c.execute("SELECT id, created_by FROM venv_meta").fetchall()
+    meta = {r["id"]: r["created_by"] for r in rows}
+    for item in items:
+        item["created_by"] = meta.get(item["id"])
+
+
+def create_venv(name: str, created_by: Optional[str] = None) -> dict:
     """创建名为 name 的虚拟环境；启用 MinIO 时会上传归档并保留本地缓存。"""
     base = ensure_base_dir()
     safe_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in name).strip() or "venv"
@@ -150,11 +165,17 @@ def create_venv(name: str) -> dict:
             file_service.bucket, key, buf, length=buf.getbuffer().nbytes
         )
         logger.info("Venv %s uploaded to MinIO: %s", safe_name, key)
+    with get_conn() as c:
+        c.execute(
+            "INSERT OR REPLACE INTO venv_meta (id, name, created_at, created_by) VALUES (?, ?, ?, ?)",
+            (safe_name, safe_name, datetime.utcnow().isoformat(), created_by),
+        )
     return {
         "id": safe_name,
         "name": safe_name,
         "path": str(venv_root.resolve()),
         "python_path": str(python_path.resolve()),
+        "created_by": created_by,
     }
 
 
@@ -183,6 +204,10 @@ def delete_venv(venv_id: str) -> None:
     if not venv_root.is_dir():
         if not _minio_available():
             raise ValueError(f"虚拟环境不存在: {venv_id}")
+        with get_conn() as c:
+            c.execute("DELETE FROM venv_meta WHERE id = ?", (venv_id,))
         return
     shutil.rmtree(venv_root)
+    with get_conn() as c:
+        c.execute("DELETE FROM venv_meta WHERE id = ?", (venv_id,))
     logger.info("Deleted venv: %s", venv_id)

@@ -3,9 +3,10 @@
 """
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from models.schemas import VenvCreate, VenvItem
+from routers.auth import get_current_user_required
 from services import venv_service
 
 logger = logging.getLogger(__name__)
@@ -24,10 +25,10 @@ async def list_envs():
 
 
 @router.post("/envs", response_model=dict)
-async def create_env(body: VenvCreate):
-    """创建新虚拟环境。"""
+async def create_env(body: VenvCreate, current_user: str = Depends(get_current_user_required)):
+    """创建新虚拟环境（需登录，记录创建者）。"""
     try:
-        return venv_service.create_venv(body.name)
+        return venv_service.create_venv(body.name, created_by=current_user)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

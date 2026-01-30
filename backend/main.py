@@ -8,11 +8,19 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+# 优先加载 backend/.env，再加载项目根目录 .env（后者不覆盖已存在变量）
+_load_env = Path(__file__).resolve().parent / ".env"
+load_dotenv(_load_env)
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from routers import kernel, files, editor, database, history, terminal, envs
+from routers import kernel, files, editor, database, history, terminal, envs, auth
+from services import db as _  # 启动时初始化业务库 data/service.db
 from services.kernel_service import kernel_service
 
 # 配置日志
@@ -26,7 +34,6 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
-    # 启动时执行
     logger.info("BigData IDE 服务启动")
     yield
     # 关闭时执行
@@ -48,6 +55,7 @@ app.add_middleware(
 )
 
 # 注册路由
+app.include_router(auth.router)
 app.include_router(kernel.router)
 app.include_router(files.router)
 app.include_router(editor.router)
