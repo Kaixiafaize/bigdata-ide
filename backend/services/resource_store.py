@@ -2,7 +2,7 @@
 文件夹/文件路径表：业务库 resources 表，记录 path、type(file/directory)、owner、created_at
 """
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from services.db import get_conn
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 def insert(path: str, type_: str, owner: Optional[str] = None):
     """插入或更新一条 path 记录"""
     path = path.strip("/")
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     with get_conn() as c:
         c.execute(
             """

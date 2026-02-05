@@ -2,7 +2,7 @@
 用户管理：读写业务库 users 表，登录校验、CRUD、从环境变量种子
 """
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 
 import bcrypt
@@ -82,7 +82,7 @@ def create_user(username: str, password: str) -> Dict[str, Any]:
     if get_by_username(username) is not None:
         raise ValueError("用户名已存在")
     password_hash = _bcrypt_hash(password)
-    created_at = datetime.utcnow().isoformat()
+    created_at = datetime.now(timezone.utc).isoformat()
     with get_conn() as c:
         c.execute(
             "INSERT INTO users (username, password_hash, created_at, disabled) VALUES (?, ?, ?, 0)",

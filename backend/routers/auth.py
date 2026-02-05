@@ -2,7 +2,7 @@
 用户认证：登录（查 users 表）、JWT、当前用户依赖；用户管理 API
 """
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 
 from fastapi import APIRouter, HTTPException, Depends
@@ -36,7 +36,7 @@ def _verify_user(username: str, password: str) -> bool:
 
 
 def _create_token(username: str) -> str:
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {"sub": username, "exp": expire}
     return jwt.encode(payload, AUTH_SECRET, algorithm=ALGORITHM)
 

@@ -3,7 +3,7 @@
 """
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 from services.db import get_conn
@@ -31,7 +31,7 @@ class HistoryService:
     ) -> str:
         """添加执行历史记录"""
         history_id = str(uuid.uuid4())
-        created_at = datetime.utcnow().isoformat()
+        created_at = datetime.now(timezone.utc).isoformat()
         with get_conn() as c:
             c.execute(
                 """

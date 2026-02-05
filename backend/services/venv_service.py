@@ -10,7 +10,7 @@ import sys
 import logging
 import subprocess
 import tarfile
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from io import BytesIO
 from typing import List, Optional
@@ -168,7 +168,7 @@ def create_venv(name: str, created_by: Optional[str] = None) -> dict:
     with get_conn() as c:
         c.execute(
             "INSERT OR REPLACE INTO venv_meta (id, name, created_at, created_by) VALUES (?, ?, ?, ?)",
-            (safe_name, safe_name, datetime.utcnow().isoformat(), created_by),
+            (safe_name, safe_name, datetime.now(timezone.utc).isoformat(), created_by),
         )
     return {
         "id": safe_name,
